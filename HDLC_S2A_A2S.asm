@@ -7,6 +7,10 @@
 ;	Author:		Juan Carlos Pérez De Castro (Wodie)	KM4NNO / XE1F		*
 ;	Project advisor:	Bryan Fiels W9CR								*
 ;																		*
+;	This software is licenced under the GPL v3 and is intended for		*
+;	amateur and educational use only. If you intend to use this			*
+;	software for commercial purposes please get a writen permission		*
+;	from Juan Carlos Pérez De Castro.									*
 ;																		*
 ;************************************************************************
 ;																		*
