@@ -1,8 +1,8 @@
 ;************************************************************************
 ;																		*
-;	Filename:	    HDLC S2A A2S v34.asm								*
-;	Date:			May 20, 2018.										*
-;	File Version:	3.4													*
+;	Filename:	    HDLC S2A A2S v35.asm								*
+;	Date:			Nov 10, 2018.										*
+;	File Version:	3.5													*
 ;																		*
 ;	Author:		Juan Carlos Pérez De Castro (Wodie)	KM4NNO / XE1F		*
 ;	Project advisor:	Bryan Fiels W9CR								*
@@ -21,6 +21,7 @@
 ;	Notes:																* 
 ;	S>A HDLC & A>S HDLC versions merged for only one PIC.				*
 ;	Memory extended to support TMS.										*
+;	RS-232 port speed needs to be 19,200.								*
 ;																		*
 ;  ***	Missing:														*
 ;	Deep testing.														*
@@ -76,7 +77,7 @@
 	COMMON_RAM3	EQU	H'120'	; //
 	COMMON_RAM4	EQU	H'1A0'	; /
 	Osc_Freq	EQU	20000000; 20 MHz
-	Baud_Rate	EQU	9600; 9.6 Kbauds
+	Baud_Rate	EQU	19200; 19.2 Kbauds
 	Baud_Rate_Const	EQU	(Osc_Freq/(16*Baud_Rate))-1
 
 	; Define HDLC constants.
