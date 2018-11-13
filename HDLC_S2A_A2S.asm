@@ -1,8 +1,8 @@
 ;************************************************************************
 ;																		*
-;	Filename:	    HDLC S2A A2S v36.asm								*
-;	Date:			Nov 12, 2018.										*
-;	File Version:	3.6													*
+;	Filename:	    HDLC S2A A2S v37.asm								*
+;	Date:			Nov 13, 2018.										*
+;	File Version:	3.7													*
 ;																		*
 ;	Author:		Juan Carlos Pérez De Castro (Wodie)	KM4NNO / XE1F		*
 ;	Project advisor:	Bryan Fiels W9CR								*
@@ -21,10 +21,11 @@
 ;	Notes:																* 
 ;	S>A HDLC & A>S HDLC versions merged for only one PIC.				*
 ;	Memory extended to support TMS.										*
-;	RS-232 port speed needs to be 19,200.								*
+;	RS-232 port speed needs to be 19.200 kbps.							*
+;	CTS Implemented.													*
 ;																		*
 ;  ***	Missing:														*
-;	Deep testing.														*
+;	Test Async to Sync with real Quantar frames.						*
 ;																		*
 ;************************************************************************
 	Title	"S>A HDLC & A>S HDLC interface for P25NX Quantar"
@@ -47,12 +48,12 @@
 #DEFINE	SRxRLED	PORTA,3			; Red LED
 #DEFINE	ARxGLED	PORTA,0			; Green LED
 #DEFINE	ARxRLED	PORTA,1			; Red LED
-#DEFINE CTS		PORTC,5			; Clear To Send. Tells computer when it can send new data.
 
 #DEFINE RxClock	PORTB,0			; Quantar Master Clock Output.
 #DEFINE	RxPin	PORTB,1			; Data Rx from Quantar.
 ;#DEFINE	TxClock	PORTB,2			; Data Clock to Quantar.
 #DEFINE	TxPin	PORTB,3			; Data Tx to Quantar.
+#DEFINE CTS		PORTC,5			; Clear To Send. Tells computer when it can send new data.
 
 #DEFINE	ServiceFlag		BITS1,0		; Developer debug mode flag.
 #DEFINE	SRxFiveOnes		BITS1,1		; S to A HDLC flags.
@@ -78,7 +79,7 @@
 	COMMON_RAM3	EQU	H'120'	; //
 	COMMON_RAM4	EQU	H'1A0'	; /
 	Osc_Freq	EQU	20000000; 20 MHz
-	Baud_Rate	EQU	19200; 19.2 Kbauds
+	Baud_Rate	EQU	19200	;9600; 9.6 Kbauds
 	Baud_Rate_Const	EQU	(Osc_Freq/(16*Baud_Rate))-1
 
 	; Define HDLC constants.
@@ -514,6 +515,7 @@ START	CLRWDT
 	CLRF	SyncTxByte
 	BSF		HeaderBeingTx	; Enable continous Idle HDLC_Tx StartByte.
 	BCF		TxPin			; Clear HDLC_Tx Pin.		
+	BSF		CTS				; Hardware flow control saying PIC is ready for Rx a frame.
 	CLRW					; Clear W register.
 
 ;*****	Loops	*****************************
@@ -523,7 +525,7 @@ LOOPS:	CLRWDT				; Main loop
 	;BTFSC	ServiceFlag		; Flag for development use.
 	;CALL	A2S_TestPat
 
-	BTFSC	SRxComplete	; If a HDCL frame was received from Quantar,
+	BTFSC	SRxComplete		; If a HDCL frame was received from Quantar,
 	CALL	RS232_Tx		; Send it to the raspberry Pi.
 	NOP
 	
@@ -880,7 +882,7 @@ SwapMem_A_S
 	CLRF	ABufferInLen
 	CLRF	TxByteIndex
 	BCF		DataReady
-	BSF		CTS
+	BSF		CTS				; Hardware flow control saying PIC is ready for Rx a frame.
 	RETURN
 
 ;************************************************************
@@ -905,11 +907,10 @@ A_FooterRx:
 	MOVFW	ABufferInLen		; Save the number of words Rx.
 	BTFSS	ZERO				; Set a flag to know a frame was Rx.
 	BSF		DataReady			; /
-	BTFSS	ZERO				; Clear CTS so PC waits PIC to be ready to receive next datagram.
-	BCF		CTS					; /
 	RETURN
 
 TestEscChar:
+	BCF		CTS				; Clear CTS so PC have to wait for PIC to be ready to receive next frame.
 	MOVFW	ARxByte			; Load Rx word.
 	SUBLW	EscapeOct		; Test for Escape Oct 0x7D.
 	BTFSS	ZERO			; If Byte is equal to 0x7D then this could be an escape character.
