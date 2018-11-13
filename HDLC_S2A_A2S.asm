@@ -1,8 +1,8 @@
 ;************************************************************************
 ;																		*
-;	Filename:	    HDLC S2A A2S v35.asm								*
-;	Date:			Nov 10, 2018.										*
-;	File Version:	3.5													*
+;	Filename:	    HDLC S2A A2S v36.asm								*
+;	Date:			Nov 12, 2018.										*
+;	File Version:	3.6													*
 ;																		*
 ;	Author:		Juan Carlos Pérez De Castro (Wodie)	KM4NNO / XE1F		*
 ;	Project advisor:	Bryan Fiels W9CR								*
@@ -47,6 +47,7 @@
 #DEFINE	SRxRLED	PORTA,3			; Red LED
 #DEFINE	ARxGLED	PORTA,0			; Green LED
 #DEFINE	ARxRLED	PORTA,1			; Red LED
+#DEFINE CTS		PORTC,5			; Clear To Send. Tells computer when it can send new data.
 
 #DEFINE RxClock	PORTB,0			; Quantar Master Clock Output.
 #DEFINE	RxPin	PORTB,1			; Data Rx from Quantar.
@@ -879,6 +880,7 @@ SwapMem_A_S
 	CLRF	ABufferInLen
 	CLRF	TxByteIndex
 	BCF		DataReady
+	BSF		CTS
 	RETURN
 
 ;************************************************************
@@ -903,6 +905,8 @@ A_FooterRx:
 	MOVFW	ABufferInLen		; Save the number of words Rx.
 	BTFSS	ZERO				; Set a flag to know a frame was Rx.
 	BSF		DataReady			; /
+	BTFSS	ZERO				; Clear CTS so PC waits PIC to be ready to receive next datagram.
+	BCF		CTS					; /
 	RETURN
 
 TestEscChar:
