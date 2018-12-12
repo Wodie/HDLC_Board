@@ -79,7 +79,7 @@
 	COMMON_RAM3	EQU	H'120'	; //
 	COMMON_RAM4	EQU	H'1A0'	; /
 	Osc_Freq	EQU	20000000; 20 MHz
-	Baud_Rate	EQU	19200	;9600; 9.6 Kbauds
+	Baud_Rate	EQU	19200	; 19.200 Kbauds
 	Baud_Rate_Const	EQU	(Osc_Freq/(16*Baud_Rate))-1
 
 	; Define HDLC constants.
