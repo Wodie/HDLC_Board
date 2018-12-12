@@ -1,4 +1,4 @@
-# v.24_Black_Box
+# Quantar_v.24_to_RS232
 Quantar v.24 Sync to/from Async interface.
 
 This is the sourcecode for the Microchip PIC 16F887 inside the v.24 board created by Juan Carlos Perez KM4NNO.
