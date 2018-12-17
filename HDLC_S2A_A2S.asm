@@ -1,8 +1,8 @@
 ;************************************************************************
 ;																		*
-;	Filename:	    HDLC S2A A2S v37.asm								*
-;	Date:			Nov 13, 2018.										*
-;	File Version:	3.7													*
+;	Filename:	    HDLC S2A A2S v38.asm								*
+;	Date:			Dec 16, 2018.										*
+;	File Version:	3.8													*
 ;																		*
 ;	Author:		Juan Carlos Pérez De Castro (Wodie)	KM4NNO / XE1F		*
 ;	Project advisor:	Bryan Fiels W9CR								*
@@ -21,8 +21,9 @@
 ;	Notes:																* 
 ;	S>A HDLC & A>S HDLC versions merged for only one PIC.				*
 ;	Memory extended to support TMS.										*
-;	RS-232 port speed needs to be 19.200 kbps.							*
-;	CTS Implemented.													*
+;	Async RS-232 port speed can be switched from 9600 and 19.200 kbps 	*
+;	on line #83.														*
+;	CTS Polarity Inverted.												*
 ;																		*
 ;  ***	Missing:														*
 ;	Test Async to Sync with real Quantar frames.						*
@@ -79,7 +80,7 @@
 	COMMON_RAM3	EQU	H'120'	; //
 	COMMON_RAM4	EQU	H'1A0'	; /
 	Osc_Freq	EQU	20000000; 20 MHz
-	Baud_Rate	EQU	19200	; 19.200 Kbauds
+	Baud_Rate	EQU	9600; Here you can select Async Speed 9.600 or 19.200 kbauds
 	Baud_Rate_Const	EQU	(Osc_Freq/(16*Baud_Rate))-1
 
 	; Define HDLC constants.
@@ -515,7 +516,7 @@ START	CLRWDT
 	CLRF	SyncTxByte
 	BSF		HeaderBeingTx	; Enable continous Idle HDLC_Tx StartByte.
 	BCF		TxPin			; Clear HDLC_Tx Pin.		
-	BSF		CTS				; Hardware flow control saying PIC is ready for Rx a frame.
+	BCF		CTS				; Hardware flow control saying PIC is ready for Rx a frame.
 	CLRW					; Clear W register.
 
 ;*****	Loops	*****************************
@@ -882,7 +883,7 @@ SwapMem_A_S
 	CLRF	ABufferInLen
 	CLRF	TxByteIndex
 	BCF		DataReady
-	BSF		CTS				; Hardware flow control saying PIC is ready for Rx a frame.
+	BCF		CTS				; Hardware flow control saying PIC is ready for Rx a frame.
 	RETURN
 
 ;************************************************************
@@ -910,7 +911,7 @@ A_FooterRx:
 	RETURN
 
 TestEscChar:
-	BCF		CTS				; Clear CTS so PC have to wait for PIC to be ready to receive next frame.
+	BSF		CTS				; Clear CTS so PC have to wait for PIC to be ready to receive next frame.
 	MOVFW	ARxByte			; Load Rx word.
 	SUBLW	EscapeOct		; Test for Escape Oct 0x7D.
 	BTFSS	ZERO			; If Byte is equal to 0x7D then this could be an escape character.
