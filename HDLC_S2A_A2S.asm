@@ -8,9 +8,8 @@
 ;	Project advisor:	Bryan Fiels W9CR								*
 ;																		*
 ;	This software is licenced under the GPL v3 and is intended for		*
-;	amateur and educational use only. If you intend to use this			*
-;	software for commercial purposes please get a writen permission		*
-;	from Juan Carlos Pérez De Castro.									*
+;	amateur and educational use only. If you use this software,			*
+;	please let me know. km4nno at yahoo.com                     		*
 ;																		*
 ;************************************************************************
 ;																		*
@@ -21,8 +20,6 @@
 ;	Notes:																* 
 ;	S>A HDLC & A>S HDLC versions merged for only one PIC.				*
 ;	Memory extended to support TMS.										*
-;	Async RS-232 port speed can be switched from 9600 and 19.200 kbps 	*
-;	on line #83.														*
 ;	CTS Polarity Inverted.												*
 ;																		*
 ;  ***	Missing:														*
@@ -80,7 +77,7 @@
 	COMMON_RAM3	EQU	H'120'	; //
 	COMMON_RAM4	EQU	H'1A0'	; /
 	Osc_Freq	EQU	20000000; 20 MHz
-	Baud_Rate	EQU	9600; Here you can select Async Speed 9.600 or 19.200 kbauds
+	Baud_Rate	EQU	19200; Async needs to be 19.200 kbauds.
 	Baud_Rate_Const	EQU	(Osc_Freq/(16*Baud_Rate))-1
 
 	; Define HDLC constants.
