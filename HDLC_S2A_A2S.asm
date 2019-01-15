@@ -1,15 +1,13 @@
 ;************************************************************************
 ;																		*
 ;	Filename:	    HDLC S2A A2S v38.asm								*
-;	Date:			Dec 16, 2018.										*
-;	File Version:	3.8													*
+;	Date:			Jan 13, 2019.										*
+;	File Version:	3.9													*
 ;																		*
 ;	Author:		Juan Carlos Pérez De Castro (Wodie)	KM4NNO / XE1F		*
 ;	Project advisor:	Bryan Fiels W9CR								*
 ;																		*
-;	This software is licenced under the GPL v3 and is intended for		*
-;	amateur and educational use only. If you use this software,			*
-;	please let me know. km4nno at yahoo.com                     		*
+;	This software is licenced under the GPL v3 license.					*
 ;																		*
 ;************************************************************************
 ;																		*
@@ -21,6 +19,7 @@
 ;	S>A HDLC & A>S HDLC versions merged for only one PIC.				*
 ;	Memory extended to support TMS.										*
 ;	CTS Polarity Inverted.												*
+;	CTS bug fixed.														*
 ;																		*
 ;  ***	Missing:														*
 ;	Test Async to Sync with real Quantar frames.						*
@@ -77,7 +76,7 @@
 	COMMON_RAM3	EQU	H'120'	; //
 	COMMON_RAM4	EQU	H'1A0'	; /
 	Osc_Freq	EQU	20000000; 20 MHz
-	Baud_Rate	EQU	19200; Async needs to be 19.200 kbauds.
+	Baud_Rate	EQU	19200; 19.200 kbauds
 	Baud_Rate_Const	EQU	(Osc_Freq/(16*Baud_Rate))-1
 
 	; Define HDLC constants.
@@ -513,7 +512,7 @@ START	CLRWDT
 	CLRF	SyncTxByte
 	BSF		HeaderBeingTx	; Enable continous Idle HDLC_Tx StartByte.
 	BCF		TxPin			; Clear HDLC_Tx Pin.		
-	BCF		CTS				; Hardware flow control saying PIC is ready for Rx a frame.
+	BCF		CTS				; Hardware flow control saying PIC is ready for Rx a frame BCF.
 	CLRW					; Clear W register.
 
 ;*****	Loops	*****************************
@@ -880,7 +879,7 @@ SwapMem_A_S
 	CLRF	ABufferInLen
 	CLRF	TxByteIndex
 	BCF		DataReady
-	BCF		CTS				; Hardware flow control saying PIC is ready for Rx a frame.
+	BCF		CTS				; Hardware flow control saying PIC is ready for Rx a frame BCF.
 	RETURN
 
 ;************************************************************
@@ -905,10 +904,12 @@ A_FooterRx:
 	MOVFW	ABufferInLen		; Save the number of words Rx.
 	BTFSS	ZERO				; Set a flag to know a frame was Rx.
 	BSF		DataReady			; /
+BTFSS	ZERO				; Set a flag to know a frame was Rx.
+BSF		CTS				; Set CTS so PC have to wait for PIC to be ready to receive next frame.
 	RETURN
 
 TestEscChar:
-	BSF		CTS				; Clear CTS so PC have to wait for PIC to be ready to receive next frame.
+;	BSF		CTS				; Set CTS so PC have to wait for PIC to be ready to receive next frame.
 	MOVFW	ARxByte			; Load Rx word.
 	SUBLW	EscapeOct		; Test for Escape Oct 0x7D.
 	BTFSS	ZERO			; If Byte is equal to 0x7D then this could be an escape character.
