@@ -1,8 +1,8 @@
 ;************************************************************************
 ;																		*
-;	Filename:	    HDLC S2A A2S v38.asm								*
-;	Date:			Jan 13, 2019.										*
-;	File Version:	3.9													*
+;	Filename:	    HDLC S2A A2S v40.asm								*
+;	Date:			Jan 31, 2019.										*
+;	File Version:	4.0													*
 ;																		*
 ;	Author:		Juan Carlos Pérez De Castro (Wodie)	KM4NNO / XE1F		*
 ;	Project advisor:	Bryan Fiels W9CR								*
@@ -20,9 +20,10 @@
 ;	Memory extended to support TMS.										*
 ;	CTS Polarity Inverted.												*
 ;	CTS bug fixed.														*
+;	WDT structure Modified.												*
+;	RS-232 Reset CMD Bug fixed.											*
 ;																		*
 ;  ***	Missing:														*
-;	Test Async to Sync with real Quantar frames.						*
 ;																		*
 ;************************************************************************
 	Title	"S>A HDLC & A>S HDLC interface for P25NX Quantar"
@@ -397,7 +398,7 @@ INTEND:	MOVFW	FSR_TEMP		;Restore PIC state
     RETFIE
 
 ;*****	START	*****************************
-START	CLRWDT
+START:	CLRWDT
 	BANK0
 	BANK00
 ;***	CLEAR PORTS
@@ -516,11 +517,11 @@ START	CLRWDT
 	CLRW					; Clear W register.
 
 ;*****	Loops	*****************************
-LOOPS:	CLRWDT				; Main loop
+LOOPS:						; Main loop
 	CLRF	PORTA			; Turn Off all LEDs.
 
-	;BTFSC	ServiceFlag		; Flag for development use.
-	;CALL	A2S_TestPat
+;	BTFSC	ServiceFlag		; Flag for development use.
+;	CALL	A2S_TestPat
 
 	BTFSC	SRxComplete		; If a HDCL frame was received from Quantar,
 	CALL	RS232_Tx		; Send it to the raspberry Pi.
@@ -904,12 +905,11 @@ A_FooterRx:
 	MOVFW	ABufferInLen		; Save the number of words Rx.
 	BTFSS	ZERO				; Set a flag to know a frame was Rx.
 	BSF		DataReady			; /
-BTFSS	ZERO				; Set a flag to know a frame was Rx.
-BSF		CTS				; Set CTS so PC have to wait for PIC to be ready to receive next frame.
+	BTFSS	ZERO				; Set a flag to know a frame was Rx.
+	BSF		CTS				; Set CTS so PC have to wait for PIC to be ready to receive next frame.
 	RETURN
 
 TestEscChar:
-;	BSF		CTS				; Set CTS so PC have to wait for PIC to be ready to receive next frame.
 	MOVFW	ARxByte			; Load Rx word.
 	SUBLW	EscapeOct		; Test for Escape Oct 0x7D.
 	BTFSS	ZERO			; If Byte is equal to 0x7D then this could be an escape character.
@@ -953,24 +953,7 @@ Char_5D:
 	RETURN
 
 RS232Rx_Err:
-	GOTO	START			; Reset the PIC.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	GOTO	$-0				; Reset the PIC overloading WDT.
 
 
 
@@ -2536,6 +2519,103 @@ InsZeroBit:
 	BCF		AddZeroBit		; Bit stuff Zero Bit.
 	BCF		TxBitRAM		; Data to be Tx.
 	RETURN
+
+
+
+
+
+
+
+;*****	Debug test patterns	*****************************
+A2S_TestPat
+	MOVLW	0x7E		; Header
+	MOVWF	Testing	
+	CALL	RS232_Rx
+	MOVLW	0x7D;FD
+	MOVWF	Testing	
+	CALL	RS232_Rx
+	MOVLW	0xFF;01
+	MOVWF	Testing	
+	CALL	RS232_Rx
+	MOVLW	0xBE
+	MOVWF	Testing	
+	CALL	RS232_Rx
+	MOVLW	0xD2
+	MOVWF	Testing	
+	CALL	RS232_Rx
+	MOVLW	0x7E		; Footer
+	MOVWF	Testing	
+	CALL	RS232_Rx
+
+	CALL	HDLC_Tx	;Footer
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+
+	CALL	HDLC_Tx	;1
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+
+	CALL	HDLC_Tx	;2
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+
+	CALL	HDLC_Tx	;3
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+
+	CALL	HDLC_Tx	; 4
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+
+	CALL	HDLC_Tx	; Footer
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+
+	CALL	HDLC_Tx	; Footer
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+	CALL	HDLC_Tx
+
+
+
+	RETURN
+
 
 
 
