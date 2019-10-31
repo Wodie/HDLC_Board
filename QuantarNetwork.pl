@@ -1,21 +1,5 @@
 #!/usr/bin/perl
 #
-# #To install the required libraries run the follownig commands:
-# sudo cpan
-# install Switch
-# install IO::Socket
-# install IO::Socket::Multicast
-# install Config::IniFiles
-# install Digest::CRC
-# install Device::SerialPort
-# exit
-# 
-# #To make an exe file:
-# sudo chmod +x p25nx_7.pl
-# sudo cpan -i PAR::Packer
-# pp -o p25nx.exe p25nx_7.pl
-#
-#
 #
 # Strict and warnings recommended.
 use strict;
@@ -39,7 +23,7 @@ print "P25NX v3.0.0\n";
 print "Released: October 29, 2019. Created October 17, 2019.\n";
 print "Created by: Juan Carlos Pérez De Castro (Wodie) KM4NNO / XE1F.\n";
 print "www.wodielite.com\n";
-print "wodielite at mac.com\n";
+print "wodielite\@mac.com\n";
 print "+52(55)54356002\n\n";
 
 # Load Settings ini file.
