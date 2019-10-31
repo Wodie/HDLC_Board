@@ -10,18 +10,28 @@ Quantar v.24 Sync to/from Async card.
 
 
 #To use the QuantarNetwork program copy QuantarNetwork.pl and congfig.ini to a folder, update the config.ini file with your callsign and IP address, and install the required Perl libraries using the follownig commands:
+
 sudo cpan
+
 install Switch
+
 install IO::Socket
+
 install IO::Socket::Multicast
+
 install Config::IniFiles
+
 install Digest::CRC
+
 install Device::SerialPort
+
 exit
  
 #To make an exe file:
 sudo chmod +x QuantarNetwork.pl
+
 sudo cpan -i PAR::Packer
+
 pp -o QuantarNetwork.exe QuantarNetwork.pl
 
 
