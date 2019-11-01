@@ -9,7 +9,7 @@ Buffer from Sync to Async is unlimited.
 Buffer from Async to Sync is limited to 90 bytes.
 
 
-To use the QuantarNetwork program copy QuantarNetwork.pl and congfig.ini to a folder, update the config.ini file with your callsign and IP address, and install the required Perl libraries using the follownig commands:
+To use the QuantarNetwork program copy QuantarNetwork.pl and congfig.ini Speech.ini to a folder, update the config.ini file with your callsign and IP address, and install the required Perl libraries using the follownig commands:
 
 sudo cpan
 
