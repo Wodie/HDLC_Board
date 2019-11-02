@@ -20,48 +20,57 @@ use Class::Struct;
 
 # About Message.
 print "P25NX v3.0.0\n";
-print "Released: November 29, 2019. Created October 17, 2019.\n";
+print "Released: November 02, 2019. Created October 17, 2019.\n";
 print "Created by: Juan Carlos Pérez De Castro (Wodie) KM4NNO / XE1F.\n";
 print "www.wodielite.com\n";
 print "wodielite at mac.com\n";
 print "+52(55)54356002\n\n";
 
 # Load Settings ini file.
+print "Loading Settings...\n";
 my $cfg = Config::IniFiles->new( -file => "config.ini");
 # Settings:
 my $Mode = $cfg->val('Settings', 'Mode'); #0 Serial, 1 STUN
 my $P25NX_STUN_ID = $cfg->val('Settings', 'STUN_ID');
-print "Stun ID = $P25NX_STUN_ID\n";
 my $LocalHost = $cfg->val('Settings', 'LocalHost');
+print "  Mode = $Mode\n";
+print "  Stun ID = $P25NX_STUN_ID\n";
+print "  Local Host = $LocalHost\n";
 # Preferences
 my $Language = $cfg->val('Preferences', 'Language');
 my $Verbose = $cfg->val('Preferences', 'Verbose');
 my $HDLC_Verbose = $cfg->val('Preferences', 'HDLC_Verbose');
 my $MMDVM_Verbose = $cfg->val('Preferences', 'MMDVM_Verbose');
 my $P25NX_Verbose =$cfg->val('Preferences', 'P25NX_Verbose');
-my $DefTalkGroup = $cfg->val('Preferences', 'DefaultTalkGroup');
-my $DefTalkGroupTimeout = $cfg->val('Preferences', 'DefaulTalkGroupTimeout');
-my $UseVoicePromtps = $cfg->val('Preferences', 'UseVoicePromtps');
+my $DefaultTalkGroup = $cfg->val('Preferences', 'DefaultTalkGroup');
+my $DefaultTalkGroupTimeout = $cfg->val('Preferences', 'DefaultTalkGroupTimeout');
+my $UseVoicePrompts = $cfg->val('Preferences', 'UseVoicePrompts');
 my $UseLocalCourtesyTone = $cfg->val('Preferences', 'UseLocalCourtesyTone');
 my $UseRemoteCourtesyTone = $cfg->val('Preferences', 'UseRemoteCourtesyTone');
+print "  Language = $Language\n";
+print "  Verbose = $Verbose\n";
+print "  HDLC Verbose = $HDLC_Verbose\n";
+print "  MMDVM Verbose = $MMDVM_Verbose\n";
+print "  P25NX Verbose = $P25NX_Verbose\n";
+print "  Default Talk Group = $DefaultTalkGroup\n";
+print "  Default Talk Group Timeout = $DefaultTalkGroupTimeout\n";
+print "  Use Voice Prompts = $UseVoicePrompts\n";
+print "  Use Local Courtesy Tone = $UseLocalCourtesyTone\n";
+print "  Use Remote COurtesy Tone = $UseRemoteCourtesyTone\n";
+
 # User:
 my $Callsign = $cfg->val('User', 'Callsign');
+my $RadioID = $cfg->val('User', 'RadioID');
+print "  Callsign = $Callsign\n";
+print "  Repeater RadioID = $RadioID\n";
 # Reflectors
+print "  Listing available Reflectors:\n";
 my @Reflectors = $cfg->val('Reflectors', 'Ref');
 for (my $x = 0; $x < scalar(@Reflectors); $x++) {
-	print "Ref " . $x . " " . $Reflectors[$x] ."\n";
-}
-# Voice Announce.
-print "Loading voice announcements.\n";
-my $SpeechFile = Config::IniFiles->new( -file => "Speech.ini");
-my @SystemStart = $SpeechFile->val('SystemStart', 'byte');
-my @DefaultSpeech = $SpeechFile->val('DefaultSpeech', 'byte');
-for (my $x = 0; $x < scalar(@DefaultSpeech); $x++) {
-#	print "DefaultSpeech " . $x . " " . $DefaultSpeech[$x] ."\n";
+	print "    Ref " . $x . " " . $Reflectors[$x] ."\n";
 }
 
-
-print "Reflectors Database/MMDVM talk groups.\n"; my @Links = (
+print "  Reflectors Database/MMDVM talk groups.\n"; my @Links = (
 	#[P25NX TG, MMDVM TG, 'Ref. Address', Port],
 #	[10200, 10200, 'stn5995.ip.irlp.net', 41000], 
 #	[10201, 10201, 'stn5995.ip.irlp.net', 41001], 
@@ -86,12 +95,19 @@ print "Reflectors Database/MMDVM talk groups.\n"; my @Links = (
 	);
 my $NumberOfReflectors = scalar @Links; # Length of the array.
 for (my $x = 0; $x < $NumberOfReflectors; $x++) {
-	print "Link " . $x . " P25NX TG " . $Links[$x][0] .
+	print "    Link " . $x . " P25NX TG " . $Links[$x][0] .
 		" MMDVM TG " . $Links[$x][1] .
 		" IP " . $Links[$x][2] . 
 		" Port " . $Links[$x][3] .  "\n";
 }
-print "Total number of Reflectors = " . $NumberOfReflectors . "\n\n";
+print "  Total number of Reflectors found = " . $NumberOfReflectors . "\n\n";
+
+# Voice Announce.
+print "Loading voice announcements...\n";
+my $SpeechFile = Config::IniFiles->new( -file => "Speech.ini");
+my @SystemStart = $SpeechFile->val('SystemStart', 'byte');
+my @DefaultSpeech = $SpeechFile->val('DefaultSpeech', 'byte');
+print "\n";
 
 
 # Quantar HDLC Init
@@ -233,7 +249,7 @@ if ($Mode == 0) {
 	$SerialPort->write_settings;
 	$TickCount = sprintf("%d", $SerialPort->get_tick_count());
 	$FutureTickCount = $TickCount + 5000;
-	print "TickCount = $TickCount\n";
+	print "TickCount = $TickCount\n\n";
 }
 
 
@@ -273,17 +289,16 @@ my $P25NX_Connected = 0;
 
 
 # Connect to Default Talk Group.
-if ($DefTalkGroup > 10) {
-	ChangeLinkedTG($DefTalkGroup);
+my $ActiveLinkIndex = 0;
+my $LinkedTalkGroup = 0;
+if ($DefaultTalkGroup > 10) {
+	ChangeLinkedTG($DefaultTalkGroup);
 }
 
 # Misc
-my $ActiveLinkIndex = 0;
-my $LinkedTalkGroup = 0;
-
-
 my $Res = 0;
 my $Count = 0;
+my $Value = 0;
 
 
 ###################################################################
@@ -291,7 +306,7 @@ my $Count = 0;
 ###################################################################
 MainLoop();
 
-$SerialPort->close || die "Failed to close Serial port.\n";
+$SerialPort->close || die "Failed to close SerialPort.\n";
 $MMDVM_Sock->close();
 P25NX_Disconnect($LinkedTalkGroup);
 $P25NX_Sock->close();
@@ -919,12 +934,11 @@ sub HDLC_Tx{
 		$LSB = $CRC - $MSB * 256;
 		$Data = $Data . chr($MSB) . chr($LSB);
 		# Byte Stuff
-		$Data =~ s/\~/\}\^/g; # 0x7E to 0x7D 0x5E
 		$Data =~ s/\}/\}\]/g; # 0x7D to 0x7D 0x5D
+		$Data =~ s/\~/\}\^/g; # 0x7E to 0x7D 0x5E
 		if ($HDLC_Verbose == 2) {print "Len(Data) = ", length($Data), "\n";}
 		$SerialPort->write(chr(0x7E) . $Data . chr(0x7E));
-
-		my $SerialWait = 0.000834 * (length($Data) + 1);
+		my $SerialWait = 0.000834 * (length($Data) + 3);
 		select(undef, undef, undef, $SerialWait);
 		print "Serial Wait $SerialWait\n";
 	}
@@ -1134,7 +1148,7 @@ sub ChangeLinkedTG{
 			" IP " . $MMDVM_Addr->Address .
 			" Port " . $MMDVM_Addr->Port . "\n";
 		}
-		print "Local Port " . $MMDVM_LocalHost . "\n";
+		#print "Local Port " . $MMDVM_Sock->LocalHost . "\n";
 		$MMDVM_Sock = IO::Socket::INET->new(
 			LocalPort => $MMDVM_LocalPort,
 			Proto => 'udp',
@@ -1388,9 +1402,11 @@ sub MainLoop{
 		}
 		$TickCount = sprintf("%d", $SerialPort->get_tick_count());
 		if ($TickCount > $FutureTickCount){
-			SaySomething(0);
+			if ($UseVoicePrompts) {SaySomething(0);}
 			$FutureTickCount = $TickCount + 15000;
 		}
+#		my $FutureTick = sprintf("%d", $SerialPort->get_tick_count()) + 1000;
+#		print "TickCount = " . $SerialPort->get_tick_count() . " <-> " . $FutureTick . "\n";
 	}
 }
 
@@ -1408,14 +1424,12 @@ sub SaySomething{
 			@Speech = @DefaultSpeech;
 		}
 	}
-	for (my $x = 0; $x < scalar(@DefaultSpeech); $x++) {
-		my $Message = $DefaultSpeech[$x];
-		$Message = HexString_2_Bytes($Message);
+	for (my $x = 0; $x < scalar(@Speech); $x++) {
+		$Message = HexString_2_Bytes($Speech[$x]);
 		#select(undef, undef, undef, 0.023); # Sleep 10mS.
 		HDLC_Tx($Message);
-	}		
+	}
+	print "Value = $Value\n";		
+	$Value++;
 }
-
-
-
 
