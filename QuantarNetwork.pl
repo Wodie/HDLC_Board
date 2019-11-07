@@ -20,7 +20,7 @@ use Class::Struct;
 
 # About Message.
 print "P25NX v3.0.0\n";
-print "Released: November 02, 2019. Created October 17, 2019.\n";
+print "Released: November 07, 2019. Created October 17, 2019.\n";
 print "Created by: Juan Carlos Pérez De Castro (Wodie) KM4NNO / XE1F.\n";
 print "www.wodielite.com\n";
 print "wodielite at mac.com\n";
@@ -31,7 +31,7 @@ print "Loading Settings...\n";
 my $cfg = Config::IniFiles->new( -file => "config.ini");
 # Settings:
 my $Mode = $cfg->val('Settings', 'Mode'); #0 Serial, 1 STUN
-my $P25NX_STUN_ID = $cfg->val('Settings', 'STUN_ID');
+my $P25NX_STUN_ID = sprintf("%x", $cfg->val('Settings', 'STUN_ID'));
 my $LocalHost = $cfg->val('Settings', 'LocalHost');
 print "  Mode = $Mode\n";
 print "  Stun ID = $P25NX_STUN_ID\n";
@@ -60,7 +60,7 @@ print "  Use Remote COurtesy Tone = $UseRemoteCourtesyTone\n";
 
 # User:
 my $Callsign = $cfg->val('User', 'Callsign');
-my $RadioID = $cfg->val('User', 'RadioID');
+my $RadioID = sprintf("%x", $cfg->val('User', 'RadioID'));
 print "  Callsign = $Callsign\n";
 print "  Repeater RadioID = $RadioID\n";
 # Reflectors
@@ -230,11 +230,13 @@ my $RTRT_Enabled_Value = 1;
 my $HDLC_Enabled = 1;
 my $Tx_Started = 0;
 my $SuperFrameCounter = 0;
+my $HDLC_TxTraffic = 0;
 
 # Init Serial Port for HDLC.
 my $TickCount;
 my $FutureTickCount;
 my $SerialPort;
+my $SerialPort_Configuration = "SerialConfig.cnf";
 if ($Mode == 0) {
 	$SerialPort = Device::SerialPort->new('/dev/ttyUSB0') || die "Cannot Init Serial Port : $!\n"; # For Linux.
 	#my $SerialPort = Device::SerialPort->new('/dev/tty.usbserial') || die "Cannot Init Serial Port : $!\n"; # For Mac.
@@ -246,11 +248,40 @@ if ($Mode == 0) {
 	$SerialPort->buffers(4096, 4096);
 	$SerialPort->datatype('raw');
 	$SerialPort->debug(1);
-	$SerialPort->write_settings;
+	$SerialPort->write_settings || undef $SerialPort;
+	$SerialPort->save($SerialPort_Configuration);
 	$TickCount = sprintf("%d", $SerialPort->get_tick_count());
 	$FutureTickCount = $TickCount + 5000;
 	print "TickCount = $TickCount\n\n";
 }
+
+# Init CIsco STUN TCP Server
+print "Init CIsco STUN.\n";
+my $CiscoSTUN_Port = 1994;
+my $CiscoSTUN_ClientAddress;
+my $CiscoSTUN_ClientPort;
+my $CiscoSTUN_Sock;
+my $CiscoSTUN_Sel;
+if ($Mode == 1) {
+	$CiscoSTUN_Sock = IO::Socket::INET->new(
+#		PeerAddr => '172.31.7.129',
+		LocalPort => $CiscoSTUN_Port,
+		Proto => 'tcp',
+		Listen => 5,
+		ReuseAddr => 1,
+		Type => SOCK_STREAM,
+#		PeerPort => $CiscoSTUN_Port
+		) or die "Can not init TCP STUN : $@\n";
+	$CiscoSTUN_Sel = IO::Select->new($CiscoSTUN_Sock);
+#	setsockopt(SERVER, SOL_SOCKET, SO_REUSEADDR, 1);
+}
+my $CiscoSTUN_Connected = 0;
+my $CiscoSTUN_ClientSock;
+my $CiscoSTUN_ClientSel;
+my $CiscoSTUN_ClientSock_fh;
+
+#socket(SERVER,);
+
 
 
 # Init MMDVM.
@@ -500,7 +531,7 @@ sub HDLC_Rx{
 					}
 				}
 				case 0x01 {
-					print "UI 0x01 Undefined.\n";	
+					print "UI 0x01 Undefined.\n";
 				}
 				case 0x59 {
 					print "UI 0x59 Undefined.\n";
@@ -938,9 +969,17 @@ sub HDLC_Tx{
 		$Data =~ s/\~/\}\^/g; # 0x7E to 0x7D 0x5E
 		if ($HDLC_Verbose == 2) {print "Len(Data) = ", length($Data), "\n";}
 		$SerialPort->write(chr(0x7E) . $Data . chr(0x7E));
-		my $SerialWait = 0.000834 * (length($Data) + 3);
+		my $SerialWait = (1 / 19200 * 8) * (length($Data) + 2); # Frame length delay.
 		select(undef, undef, undef, $SerialWait);
 		print "Serial Wait $SerialWait\n";
+#		$SerialPort->baudrate(300);
+#		$SerialPort->restart($SerialPort_Configuration);
+#		$SerialWait = (1 / 19200 * 8) * (length($Data) + 3); # Frame length delay.
+		select(undef, undef, undef, $SerialWait);
+
+
+
+
 	}
 	if ($Mode == 1) { # STUN mode.
 		CiscoSTUN_Tx($Data);
@@ -951,6 +990,7 @@ sub HDLC_Reset{
 	if ($Mode == 0) {
 		#$serialport->write(chr(0x7D) . chr(0xFF));
 		$SerialPort->pulse_rts_on(50);
+		$HDLC_TxTraffic = 0; 
 		print "HDLC_Reset Sent.\n";
 	}
 }
@@ -1015,6 +1055,29 @@ sub CRC_CCITT_Gen{
 
 
 ##################################################################
+# Cisco STUN #####################################################
+##################################################################
+sub CiscoSTUN_Rx{
+	my ($Buffer) = @_;
+	my $STUN_Header = chr(0x08) . chr(0x31) . chr(0x00) . chr(0x00) . chr(0x00);
+	if (substr($Buffer, 0, 5) eq $STUN_Header) {
+		my $MessageSTUNID = ord(substr($Buffer, 5, 1));
+		HDLC_Rx(substr($Buffer, 7, length($Buffer)));
+	}
+}
+
+sub CiscoSTUN_Tx{
+	my ($Buffer) = @_;
+	if ($CiscoSTUN_Connected) {
+		my $Stun_Header = chr(0x08) . chr(0x31) . chr(0x00) . chr(0x00) . chr(0x00) .
+			chr(2 + length($Buffer)) . chr($P25NX_STUN_ID); #STUN Header.
+		$Buffer = $Stun_Header . $Buffer;
+		$CiscoSTUN_ClientSock->write($Buffer);	
+	}
+}
+
+
+##################################################################
 # Traffic control ################################################
 ##################################################################
 sub Tx_to_Network{
@@ -1049,7 +1112,7 @@ sub HDLC_to_MMDVM{
 						chr(0x00)
 					);
 				}
-			}	
+			}
 		}
 		case [0x62..0x73] {
 			$Buffer = substr($Buffer, 2, length($Buffer)); # Here we remove first 2 Quantar Bytes.
@@ -1070,7 +1133,7 @@ sub HDLC_to_P25NX{
 	my $Stun_Header = chr(0x08) . chr(0x31) . chr(0x00) . chr(0x00) . chr(0x00) .
 		chr(2 + length($Buffer)) . chr($P25NX_STUN_ID); #STUN Header.
 	$Buffer = $Stun_Header . $Buffer;
-	P25NX_Tx($Buffer);	
+	P25NX_Tx($Buffer);
 }
 
 sub MMDVM_to_HDLC{
@@ -1095,6 +1158,7 @@ sub MMDVM_to_HDLC{
 				print "bla\n";
 				Bytes_2_HexString($Buffer);
 			}
+			$HDLC_TxTraffic = 1;
 			HDLC_Tx($Buffer);
 		}
 		case 0x80 {
@@ -1105,6 +1169,7 @@ sub MMDVM_to_HDLC{
 			HDLC_Tx(chr($Address) . chr($UI) . chr(0x00) . chr(0x02). chr($RTRT) .
 				chr($EndTx) . chr($DVoice) . chr(0x00) . chr(0x00) . chr(0x00) .
 				chr(0x00) . chr(0x00));
+			$HDLC_TxTraffic = 0;
 		}
 	}
 }
@@ -1112,7 +1177,9 @@ sub MMDVM_to_HDLC{
 sub P25NX_to_HDLC{ # P25NX packet contains Cisco STUN and Quantar packet.
 	my ($Buffer) = @_;
 	$Buffer = substr($Buffer, 7, length($Buffer)); # Here we remove Cisco STUN.
+	$HDLC_TxTraffic = 1;
 	HDLC_Tx($Buffer);
+# Add a 1s timer to $HDLC_TxTraffic = 0;
 }
 
 
@@ -1160,7 +1227,6 @@ sub ChangeLinkedTG{
 		) or die "Can not Bind MMDVM : $@\n";
 		$MMDVM_Sel = IO::Select->new($MMDVM_Sock);
 		$MMDVM_Enabled = 1;
-
 		WritePoll();
 		WritePoll();
 		WritePoll();
@@ -1350,7 +1416,7 @@ sub MainLoop{
 		if ($RR_Timer = 1 && $RR_Timeout <= 0) {
 			#print $hour . ":" . $min . ":" . $sec . " Send RR by timer.\n"; 
 			#warn "RR Timed out @{[int time - $^T]}\n";
-			if ($Mode == 0) {
+			if ($Mode < 2 and $HDLC_TxTraffic == 0) {
 				HDLC_RR_Tx();
 			}
 			$RR_NextTimer = $RR_TimerInterval + time;
@@ -1358,6 +1424,31 @@ sub MainLoop{
 		# Serial Port Receiver.
 		if ($Mode == 0) {
 			Read_Serial();
+		}
+		# Cisco STUN.
+		if ($Mode == 1) {
+			if ($CiscoSTUN_Connected == 0 and $CiscoSTUN_ClientSock = $CiscoSTUN_Sock->accept()) {
+				$CiscoSTUN_ClientAddress = $CiscoSTUN_ClientSock->peerhost();
+				$CiscoSTUN_ClientPort = $CiscoSTUN_ClientSock->peerport();
+				$CiscoSTUN_ClientSel = IO::Select->new($CiscoSTUN_ClientSock);
+				print "Connection from $CiscoSTUN_ClientAddress:$CiscoSTUN_ClientPort\n";
+				$CiscoSTUN_Connected = 1;
+			}
+		}
+		if ($CiscoSTUN_Connected) {
+#			print "blabla\n";
+			for $CiscoSTUN_ClientSock_fh ($CiscoSTUN_ClientSel->can_read(0.01)) {
+				$CiscoSTUN_ClientAddress = $CiscoSTUN_ClientSock_fh->recv(my $CiscoSTUN_Buffer, $MaxLen);
+				CiscoSTUN_Rx($CiscoSTUN_Buffer);
+				if (length($CiscoSTUN_Buffer) > 0) {
+					CiscoSTUN_Rx($CiscoSTUN_Buffer);
+					print "STUN Len(" . length($CiscoSTUN_Buffer) .")\n";
+					if ($Verbose) {print $hour . ":" . $min . ":" . $sec .
+						" " . $CiscoSTUN_ClientAddress .
+						" CiscoSTUN_Client Data len(" . length($CiscoSTUN_Buffer) . ")\n";
+					}
+				}
+			}
 		}
 		# MMDVM WritePoll becon.
 		my $MMDVM_Timeout = $MMDVM_Poll_NextTimer - time;
@@ -1400,6 +1491,8 @@ sub MainLoop{
 				}	
 			}
 		}
+		# Voice Announce.
+		if ($Mode == 0) {
 		$TickCount = sprintf("%d", $SerialPort->get_tick_count());
 		if ($TickCount > $FutureTickCount){
 			if ($UseVoicePrompts) {SaySomething(0);}
@@ -1407,6 +1500,7 @@ sub MainLoop{
 		}
 #		my $FutureTick = sprintf("%d", $SerialPort->get_tick_count()) + 1000;
 #		print "TickCount = " . $SerialPort->get_tick_count() . " <-> " . $FutureTick . "\n";
+		}
 	}
 }
 
@@ -1415,7 +1509,7 @@ sub SaySomething{
 	if ($HDLC_Handshake == 0) {return;}
 	my @Speech;
 	print "Voice Announcement running.\n";
-	my $OkToTalk = 1;
+	$HDLC_TxTraffic = 1;
 	switch ($ThingToSay) {
 		case 0x00 {
 			@Speech = @SystemStart;
@@ -1423,13 +1517,41 @@ sub SaySomething{
 		case 0x01 {
 			@Speech = @DefaultSpeech;
 		}
+		case 0x02 {
+		
+		}
+		case 0x03 {
+		
+		}
+		case 0x04 {
+		
+		}
+		case 0x05 {
+		
+		}
+		case 0x06 {
+		
+		}
+		case 0x07 {
+		
+		}
+		case 0x08 {
+		
+		}
+		case 0x09 {
+		
+		}
 	}
 	for (my $x = 0; $x < scalar(@Speech); $x++) {
 		$Message = HexString_2_Bytes($Speech[$x]);
 		#select(undef, undef, undef, 0.023); # Sleep 10mS.
 		HDLC_Tx($Message);
 	}
-	print "Value = $Value\n";		
+	$HDLC_TxTraffic = 0;
+	print "Value = $Value\n";
 	$Value++;
 }
+
+
+
 
