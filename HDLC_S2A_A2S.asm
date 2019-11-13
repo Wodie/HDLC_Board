@@ -1,8 +1,8 @@
 ;************************************************************************
 ;																		*
-;	Filename:	    HDLC S2A A2S v40.asm								*
-;	Date:			Jan 31, 2019.										*
-;	File Version:	4.0													*
+;	Filename:	    HDLC S2A A2S v44.asm								*
+;	Date:			Nov 13, 2019.										*
+;	File Version:	4.4													*
 ;																		*
 ;	Author:		Juan Carlos Pérez De Castro (Wodie)	KM4NNO / XE1F		*
 ;	Project advisor:	Bryan Fiels W9CR								*
@@ -18,18 +18,19 @@
 ;	Notes:																* 
 ;	S>A HDLC & A>S HDLC versions merged for only one PIC.				*
 ;	Memory extended to support TMS.										*
-;	CTS Polarity Inverted.												*
-;	CTS bug fixed.														*
 ;	WDT structure Modified.												*
 ;	RS-232 Reset CMD Bug fixed.											*
+;	CTS Deprecated.														*
+;	A.S Memory extended to 120 Bytes.									*
 ;																		*
-;  ***	Missing:														*
+;	***	Missing:														*
+;	Bug fix on A>S (RS-232 to HDLC).									*
 ;																		*
 ;************************************************************************
 	Title	"S>A HDLC & A>S HDLC interface for P25NX Quantar"
 
 	#include	<p16f887.inc>	; processor specific variable definitions
-	__CONFIG    _CONFIG1, _HS_OSC & _WDT_ON & _PWRTE_ON & _CP_ON & _CPD_OFF & _LVP_OFF & _MCLRE_ON & _FCMEN_ON & _IESO_OFF & _BOR_OFF & _DEBUG_OFF 
+	__CONFIG    _CONFIG1, _HS_OSC & _WDT_ON & _PWRTE_ON & _CP_OFF & _CPD_OFF & _LVP_OFF & _MCLRE_ON & _FCMEN_ON & _IESO_OFF & _BOR_OFF & _DEBUG_OFF
 	__CONFIG    _CONFIG2, _WRT_OFF & _BOR21V
 	list		p=16f887	; list directive to define processor
 
@@ -51,61 +52,45 @@
 #DEFINE	RxPin	PORTB,1			; Data Rx from Quantar.
 ;#DEFINE	TxClock	PORTB,2			; Data Clock to Quantar.
 #DEFINE	TxPin	PORTB,3			; Data Tx to Quantar.
-#DEFINE CTS		PORTC,5			; Clear To Send. Tells computer when it can send new data.
+;#DEFINE CTS		PORTC,5			; Clear To Send. Tells computer when it can send new data.
 
-#DEFINE	ServiceFlag		BITS1,0		; Developer debug mode flag.
-#DEFINE	SRxFiveOnes		BITS1,1		; S to A HDLC flags.
-#DEFINE	SRxSixOnes		BITS1,2		; ////
-#DEFINE	SRxSevenOnes	BITS1,3		; ///
-#DEFINE	SDummyZeroFlag	BITS1,4		; //
-#DEFINE SRxComplete		BITS1,5		; /
+#DEFINE	ServiceFlag		FLAGS_1,0		; Developer debug mode flag.
+#DEFINE	SRxFiveOnes		FLAGS_1,1		; S to A HDLC flags.
+#DEFINE	SRxSixOnes		FLAGS_1,2		; /////
+#DEFINE	SRxSevenOnes	FLAGS_1,3		; ////
+#DEFINE	SDummyZeroFlag	FLAGS_1,4		; ///
+#DEFINE SRxComplete		FLAGS_1,5		; //
+#DEFINE	SHeaderRx		FLAGS_1,6		; /
 
-#DEFINE EscapeCharFlag	BITS2,0		; A to S HDLC flags.
-#DEFINE	TxBitRAM		BITS2,1		; ///
-#DEFINE HeaderBeingTx	BITS2,2		; //
-#DEFINE	WritingBuffer	BITS2,3		; /
-#DEFINE DataReady		BITS2,4		; /
-#DEFINE AddZeroBit		BITS2,5		; /
-
-#DEFINE	SHeaderRx		BITS3,0
-#DEFINE	FooterWasTx		BITS3,1
+#DEFINE EscapeCharFlag	FLAGS_2,0		; A to S HDLC flags.
+#DEFINE	TxBitRAM		FLAGS_2,1		; //////
+#DEFINE HeaderBeingTx	FLAGS_2,2		; /////
+#DEFINE	WritingBuffer	FLAGS_2,3		; ////
+#DEFINE DataReady		FLAGS_2,4		; ///
+#DEFINE AddZeroBit		FLAGS_2,5		; //
+#DEFINE	FooterWasTx		FLAGS_2,6		; /
 
 ;*****	Define program constants
-	INT_RAM		EQU	H'20'	; 96 General Porpouse registers 0x20 thru 0x7F.
-	COMMON_RAM1	EQU	H'28'
-	COMMON_RAM2	EQU	H'A0'	; F0 thru FF are common Access RAM.
-	COMMON_RAM3	EQU	H'120'	; //
-	COMMON_RAM4	EQU	H'1A0'	; /
+;	INT_RAM		EQU	H'20'	; 96 General Porpouse registers 0x20 thru 0x7F.
+;	COMMON_RAM1	EQU	H'28'
+;	COMMON_RAM2	EQU	H'A0'	; F0 thru FF are common Access RAM.
+;	COMMON_RAM3	EQU	H'110'	; //
+;	COMMON_RAM4	EQU	H'190'	; /
 	Osc_Freq	EQU	20000000; 20 MHz
 	Baud_Rate	EQU	19200; 19.200 kbauds
-	Baud_Rate_Const	EQU	(Osc_Freq/(16*Baud_Rate))-1
-
-	; Define HDLC constants.
-	StartFlag	EQU	0x7E	; B'01111110' Flag for HDLC Header/Footer.
-	EscapeOct	EQU	0x7D	; B'01111101' Escape Octet.
+	Baud_Rate_Const	EQU (Osc_Freq/(16*Baud_Rate))-1
 
 
 ;*****	SET UP RAM	***************************************
 ;***	Define interrupt handler variables
-	CBLOCK INT_RAM
+	CBLOCK 0x20	;INT_RAM
 	W_TEMP
 	S_TEMP
 	P_TEMP
 	FSR_TEMP
 	ENDC
 ;***	DEFINE RAM 1
-	CBLOCK COMMON_RAM1
-	BITS1		; Bit variables
-	BITS2		; Bit variables
-	BITS3		; Sync: Bit variables
-	BitIndex	; HDLC Rx bit position
-	OnesCount	; Continous 1 counter
-	SRxByte		; Sync: RAM for the HDLC Rx Byte	
-	ATxByte		; Async: Byte to be Tx via RS-232	
-
-	ABufferInLen; Counter for Async Bytes Rx.
-	SBufferOutLen; Counter for Sync Bytes to Tx.
-	DataIndex	; Counter of Bytes Tx (table position index).
+	CBLOCK 0x30
 	ABufferIn0	; These are the RAM Bytes used to Rx
 	ABufferIn1	; from Async HDLC.
 	ABufferIn2
@@ -171,18 +156,29 @@
 	SBufferOut29
 	SBufferOut30
 	SBufferOut31
+	ENDC
+	CBLOCK 0x70	;COMMON_RAM1
+	FLAGS_1		; Bit variables
+	FLAGS_2		; Bit variables
+	BitIndex	; HDLC Rx bit position
+	OnesCount	; Continous 1 counter
+	SRxByte		; Sync: RAM for the HDLC Rx Byte	
 
+	ATxByte		; Async: Byte to be Tx via RS-232	
 	ARxByte
-
 	TxBitIndex
 	TxOnesCount
 	TxByteIndex
 	SyncTxByte
 
+	ABufferInLen; Counter for Async Bytes Rx.
+	SBufferOutLen; Counter for Sync Bytes to Tx.
+	DataIndex	; Counter of Bytes Tx (table position index).
 	Testing
 	ENDC
+
 ;***	DEFINE RAM 2
-	CBLOCK COMMON_RAM2
+	CBLOCK 0xA0	;COMMON_RAM2
 	ABufferIn32
 	ABufferIn33
 	ABufferIn34
@@ -266,7 +262,7 @@
 	SBufferOut71
 	ENDC
 ;***	DEFINE RAM 3
-	CBLOCK COMMON_RAM3
+	CBLOCK 0x110	;COMMON_RAM3
 	ABufferIn72
 	ABufferIn73
 	ABufferIn74
@@ -307,6 +303,14 @@
 	ABufferIn109
 	ABufferIn110
 	ABufferIn111
+	ABufferIn112
+	ABufferIn113
+	ABufferIn114
+	ABufferIn115
+	ABufferIn116
+	ABufferIn117
+	ABufferIn118
+	ABufferIn119
 
 	SBufferOut72
 	SBufferOut73
@@ -348,23 +352,32 @@
 	SBufferOut109
 	SBufferOut110
 	SBufferOut111
+	SBufferOut112
+	SBufferOut113
+	SBufferOut114
+	SBufferOut115
+	SBufferOut116
+	SBufferOut117
+	SBufferOut118
+	SBufferOut119
 	ENDC
+
 
 
 ;*****	PROGRAM	***********************************************************
 	ORG	0x000
 	GOTO	START
 ;*****	INTERRUPT VECTOR	*****************************
-	ORG     0x004		; interrupt vector location.
+	ORG     0x004		; Interrupt vector location.
 	MOVWF	W_TEMP		; Save PIC state.
 	SWAPF	STATUS,W
 	CLRF    STATUS
 	MOVWF	S_TEMP
-	MOVFW	PCLATH
+	MOVF	PCLATH,W
 	MOVWF	P_TEMP
 	CLRF	PCLATH
 	BCF	STATUS,IRP
-	MOVFW	FSR
+	MOVF	FSR,W
 	MOVWF	FSR_TEMP
 ;*****	INTERUPTIONS	*****************************
 	BTFSC	INTCON,INTF	; HDLCRx Clock INT flag Hi?
@@ -384,12 +397,12 @@ HDLCRx:	BCF	INTCON,INTF	; Clear int RB0 flag.
 
 AUSARTRx:
 	CALL	RS232_Rx
-	;GOTO	INTEND
+	GOTO	INTEND
 
 ;*****	INTERUPTION FINALIZE	*****************************
-INTEND:	MOVFW	FSR_TEMP		;Restore PIC state
+INTEND:	MOVF	FSR_TEMP,W		;Restore PIC state
 	MOVWF	FSR
-	MOVFW	P_TEMP
+	MOVF	P_TEMP,W
 	MOVWF	PCLATH
 	SWAPF	S_TEMP,W
 	MOVWF	STATUS
@@ -400,27 +413,27 @@ INTEND:	MOVFW	FSR_TEMP		;Restore PIC state
 ;*****	START	*****************************
 START:	CLRWDT
 	BANK0
-	BANK00
+	BANK0X
 ;***	CLEAR PORTS
 	CLRF	PORTA		; Clear ports
 	CLRF	PORTB		; ////
 	CLRF	PORTC		; ///
 	CLRF	PORTD		; //
 	CLRF	PORTE		; /
-	CLRF	BITS1		; Clear flags
-	CLRF	BITS2		; //
-	CLRF	BITS3		; /
+	CLRF	FLAGS_1		; Clear flags
+	CLRF	FLAGS_2		; /
 ;	BSF		ServiceFlag	; Flag for development use.
 ;***	CONFIGURE PORTS
 	BANK1
-	CLRF	TRISA		; PORTA OUT
-	MOVLW	B'00000011'	; HDLC port data directions.
-	;MOVLW	B'00000001'	; HDLC port data directions only for Debug.
+	CLRF	TRISA		; PORTA OUT (LEDs)
+	MOVLW	B'00000011'	; PORTB HDLC port data directions.
+	BTFSC	ServiceFlag	; Only for development test.
+	MOVLW	B'00000001'	; PORTB HDLC port data directions only for Debug.
 	MOVWF	TRISB		; PORTB IN/OUT
-	MOVLW	B'10001111'	; High Nible = AUSART Port, Low Nible = ID.
-	MOVWF	TRISC		; PORTC OUT
-	CLRF	TRISD		; PORTD IN/OUT
-	CLRF	TRISE		; PORTE OUT
+	MOVLW	B'10001111'	; PORTC High Nible = AUSART Port, Low Nible = ID.
+	MOVWF	TRISC		; PORTC IN/OUT
+	CLRF	TRISD		; PORTD IN/OUT (not used)
+	CLRF	TRISE		; PORTE OUT (not used)
 	BANK1X
 	CLRF	ANSEL		; SET PORTA AS DIGITAL PORTS
 	CLRF	ANSELH		; SET PORTB AS DIGITAL PORTS
@@ -437,9 +450,9 @@ START:	CLRWDT
 	MOVWF	SPBRG
 	BANK0
 	BSF		RCSTA,SPEN	; Enable Serial Port.
-	
+
 ;***	!RESET!n Message.
-	MOVLW	StartFlag		; Start Flag to Tx.
+	MOVLW	0x7E		; Start Flag to Tx.
 	BTFSS	PIR1,TXIF		; Tx Modified Data Byte.
 	GOTO	$-1				; //
 	MOVWF	TXREG			; /
@@ -476,7 +489,7 @@ START:	CLRWDT
 	BTFSS	PIR1,TXIF		; Tx Modified Data Byte.
 	GOTO	$-1				; //
 	MOVWF	TXREG			; /
-	MOVLW	StartFlag		; Footer FLag to Tx.
+	MOVLW	0x7E			; Footer Start Flag to Tx.
 	BTFSS	PIR1,TXIF		; Tx Modified Data Byte.
 	GOTO	$-1				; //
 	MOVWF	TXREG			; /
@@ -511,14 +524,17 @@ START:	CLRWDT
 	CLRF 	TxOnesCount
 	CLRF	TxByteIndex
 	CLRF	SyncTxByte
+	CLRF	PORTA			; Turn Off all LEDs.
 	BSF		HeaderBeingTx	; Enable continous Idle HDLC_Tx StartByte.
 	BCF		TxPin			; Clear HDLC_Tx Pin.		
-	BCF		CTS				; Hardware flow control saying PIC is ready for Rx a frame BCF.
 	CLRW					; Clear W register.
 
 ;*****	Loops	*****************************
 LOOPS:						; Main loop
-	CLRF	PORTA			; Turn Off all LEDs.
+;	CLRF	PORTA			; Turn Off all LEDs.
+	BCF		SRxGLED
+	BCF		SRxRLED
+	BCF		ARxGLED
 
 ;	BTFSC	ServiceFlag		; Flag for development use.
 ;	CALL	A2S_TestPat
@@ -526,9 +542,8 @@ LOOPS:						; Main loop
 	BTFSC	SRxComplete		; If a HDCL frame was received from Quantar,
 	CALL	RS232_Tx		; Send it to the raspberry Pi.
 	NOP
-	
-	GOTO	LOOPS
 
+	GOTO	LOOPS
 
 
 
@@ -536,10 +551,10 @@ LOOPS:						; Main loop
 ;************************************************************
 ;*****	HDLC Receive	*************************************
 ;************************************************************
-HDLC_Rx
+HDLC_Rx:
 	BTFSC	RxPin				; Read HDLC pin, if ValueRx is ONE then:
 	GOTO	OneOptions			;	Goto see how many ONEs we have.
-;000000000000000000000000000000000000000000000000000000000000
+;0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 ZeroOptions:					; So it is a ZERO.
 	BTFSC	SRxSixOnes			; If we are receiving a Header then
 	GOTO	HeaderFinalZero		;	This is the last Header Byte, the ZERO.
@@ -561,7 +576,7 @@ HeaderFinalZero:
 	BSF		SRxComplete		; Rx Sync Frame is complete.
 	RETURN
 
-;1111111111111111111111111111111111111111111111111111111111111111111111
+;1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
 OneOptions:
 	INCF	OnesCount,F		; ONEs + 1.
 	MOVFW	OnesCount		; Review last number of consecutive ONEs.
@@ -604,7 +619,7 @@ SeventhOneRx:
 ;************************************************************
 ;*****	RS-232 Tx	*****************************************
 ;************************************************************
-RS232_Tx
+RS232_Tx:
 	BTFSC	SHeaderRx
 	GOTO	AHeaderTx
 	CALL	TestEscapeCh	; Test for Escape Characters.
@@ -621,17 +636,17 @@ TxHeader1:
 	BSF		FooterWasTx		; Flag to remember Start Flag was sent.
 	BTFSS	PIR1,TXIF		; Transmit Start byte 0x7E.
 	GOTO	$-1				; ///
-	MOVLW	StartFlag		; //
+	MOVLW	0x7E			; // Start Flag
 	MOVWF	TXREG			; /
 	BCF		SHeaderRx
 	BCF		SRxComplete		; Clear the flag to know data has been sent thru RS-232.
 	RETURN
 
-TestEscapeCh
+TestEscapeCh:
 	BTFSC	FooterWasTx		; Previous Byte was Footer?
 	CALL	AHeader			; New Data, so send its Header.
 	MOVFW	ATxByte
-	SUBLW	StartFlag
+	SUBLW	0x7E			; StartFlag
 	BTFSS	ZERO			; If Byte is equal to 0x7E then we need to add escape character.
 	GOTO	NOT0x7E			; Not a 0x7E.
 	BTFSS	CARRY			;
@@ -640,14 +655,14 @@ TestEscapeCh
 
 NOT0x7E:
 	MOVFW	ATxByte
-	SUBLW	EscapeOct
+	SUBLW	0x7D			; Escape Char 0x7D.
 	BTFSS	ZERO			; If Byte is equal to 0x7D then we need to add escape character.
 	GOTO	NOT0x7D			;  Not a 0x7D. 
 	BTFSS	CARRY			;
 	GOTO	NOT0x7D			;  Not a 0x7D.
 InsEsc:
-	; EscapeOctetInsert:
-	MOVLW	EscapeOct		; Insert a 0x7D Escape Character.
+	; EscapeCharInsert:
+	MOVLW	0x7D			; Insert Escape Character 0x7D.
 	BTFSS	PIR1,TXIF		; ///	Tx Char.
 	GOTO	$-1				; //
 	MOVWF	TXREG			; /
@@ -668,20 +683,99 @@ NOT0x7D:
 	MOVWF	TXREG			; /
 	RETURN
 
-AHeader
+AHeader:
 	BTFSS	PIR1,TXIF		; Transmit Start byte 0x7E.
 	GOTO	$-1				; ///
-	MOVLW	StartFlag		; //
+	MOVLW	0x7E			; // StartFlag
 	MOVWF	TXREG			; /
 	BCF		FooterWasTx		; Start Byte Tx, so we will nedd a footer later.
 	RETURN
 
 
 
+
+;************************************************************
+;*****	RS-232 Rx	*****************************************
+;************************************************************
+RS232_Rx:
+	BSF		ARxGLED			; Blink Green LED so we know RS-232 is Rx.
+
+	BTFSC	RCSTA,FERR		; Look for errors on the Serial port Rx.
+	BSF		ARxRLED			; ///
+	BTFSC	RCSTA,OERR		; //
+	BSF		ARxRLED			; /
+
+	MOVFW	RCREG			; Read the Received byte.
+	BTFSC	ServiceFlag		; This allow us insert a custom word to emulate we Rx data from RS-232 while debugging.
+	MOVFW	Testing			; /
+	MOVWF	ARxByte			; Save Rx data.
+
+	MOVFW	ARxByte
+	SUBLW	0x7E			; Test for Start Flag B'01111110'
+	BTFSS	ZERO			; If Byte is equal to 0x7E then this is the Header.
+	GOTO	TestEscChar		; //// It is not 0x7E.
+	BTFSS	CARRY			; ///
+	GOTO	TestEscChar		; // It is not 0x7E.
+	GOTO	A_FooterRx		; /
+
+A_FooterRx:
+	BCF		WritingBuffer		; Footer Flag received 0x7E.
+	MOVFW	ABufferInLen		; Save the number of words Rx.
+	BTFSS	ZERO				; Set a flag to know a frame was Rx.
+	BSF		DataReady			; /
+	RETURN
+
+TestEscChar:
+	MOVFW	ARxByte			; Load Rx word.
+	SUBLW	0x7D			; Test for Escape Char 0x7D.
+	BTFSS	ZERO			; If Byte is equal to 0x7D then this could be an escape character.
+	GOTO	RxAData			; ///
+	BTFSS	CARRY			; //
+	GOTO	RxAData			; /
+	BSF		EscapeCharFlag	; Escape Char Flag
+	RETURN
+
+RxAData:
+	BTFSC	EscapeCharFlag	; If previous byte was an Escape Character
+	GOTO	EscChar			; /
+	BSF		WritingBuffer	; So we know the Buffer contains some Data.
+	CALL	SaveAsyncRx		; Save Byte on Buffer2.
+	RETURN
+
+EscChar:
+	BCF		EscapeCharFlag	; Clear the Escape Char Flag	
+	MOVFW	ARxByte
+	SUBLW	0x5E
+	BTFSS	ZERO			; If Byte is equal to 0x5E then it is a modified
+	GOTO	Char_5D			; /// Character.
+	BTFSS	CARRY			; //
+	GOTO	Char_5D			; /
+	MOVLW	0x7E			; Character 0x7E recovery. 
+	MOVWF	ARxByte
+	CALL	SaveAsyncRx		; Save Byte on Buffer2.
+	RETURN
+
+Char_5D:
+	MOVFW	ARxByte			; If Byte is equal to 0x5D ten it is a modified Character preceded by a header.
+	SUBLW	0x5D			; /////
+	BTFSS	ZERO			; ////
+	GOTO	RS232Rx_Err		; ///
+	BTFSS	CARRY			; //
+	GOTO	RS232Rx_Err		; /
+	MOVLW	0x7D			; Character 0x7D recovery. 
+	MOVWF	ARxByte			
+	BSF		WritingBuffer	; So we know the Buffer contains some Data.
+	CALL	SaveAsyncRx		; Save Byte on Buffer2.
+	RETURN
+
+RS232Rx_Err:
+	GOTO	$-0				; Reset the PIC overloading WDT.
+
+
 ;************************************************************
 ;***** Copy Rx to Tx RAM. ***********************************
 ;************************************************************
-SwapMem_A_S
+SwapMem_A_S:
 	MOVFW	ABufferIn0	; Pass Rx Async Buffer data to Sync Data Tx RAM.
 	MOVWF	SBufferOut0
 	MOVFW	ABufferIn1
@@ -827,8 +921,8 @@ SwapMem_A_S
 	MOVWF	SBufferOut70
 	MOVFW	ABufferIn71
 	MOVWF	SBufferOut71
-	BANK1X
 	BANK0
+	BANK1X
 	MOVFW	ABufferIn72
 	MOVWF	SBufferOut72
 	MOVFW	ABufferIn73
@@ -873,89 +967,68 @@ SwapMem_A_S
 	MOVWF	SBufferOut92
 	MOVFW	ABufferIn93
 	MOVWF	SBufferOut93
+
+	MOVFW	ABufferIn94
+	MOVWF	SBufferOut94
+	MOVFW	ABufferIn95
+	MOVWF	SBufferOut95
+	MOVFW	ABufferIn96
+	MOVWF	SBufferOut96
+	MOVFW	ABufferIn97
+	MOVWF	SBufferOut97
+	MOVFW	ABufferIn98
+	MOVWF	SBufferOut98
+	MOVFW	ABufferIn99
+	MOVWF	SBufferOut99
+	MOVFW	ABufferIn100
+	MOVWF	SBufferOut100
+	MOVFW	ABufferIn101
+	MOVWF	SBufferOut101
+	MOVFW	ABufferIn102
+	MOVWF	SBufferOut102
+	MOVFW	ABufferIn103
+	MOVWF	SBufferOut103
+	MOVFW	ABufferIn104
+	MOVWF	SBufferOut104
+	MOVFW	ABufferIn105
+	MOVWF	SBufferOut105
+	MOVFW	ABufferIn106
+	MOVWF	SBufferOut106
+	MOVFW	ABufferIn107
+	MOVWF	SBufferOut107
+	MOVFW	ABufferIn108
+	MOVWF	SBufferOut108
+	MOVFW	ABufferIn109
+	MOVWF	SBufferOut109
+	MOVFW	ABufferIn110
+	MOVWF	SBufferOut110
+	MOVFW	ABufferIn111
+	MOVWF	SBufferOut111
+	MOVFW	ABufferIn112
+	MOVWF	SBufferOut112
+	MOVFW	ABufferIn113
+	MOVWF	SBufferOut113
+	MOVFW	ABufferIn114
+	MOVWF	SBufferOut114
+	MOVFW	ABufferIn115
+	MOVWF	SBufferOut115
+	MOVFW	ABufferIn116
+	MOVWF	SBufferOut116
+	MOVFW	ABufferIn117
+	MOVWF	SBufferOut117
+	MOVFW	ABufferIn118
+	MOVWF	SBufferOut118
+	MOVFW	ABufferIn119
+	MOVWF	SBufferOut119
 	BANK0X
-	BANK0
+	CLRF	TxOnesCount
+	BCF		AddZeroBit
 	MOVFW	ABufferInLen	; Pass Data Length to be Tx.
 	MOVWF	SBufferOutLen
 	CLRF	ABufferInLen
 	CLRF	TxByteIndex
 	BCF		DataReady
-	BCF		CTS				; Hardware flow control saying PIC is ready for Rx a frame BCF.
 	RETURN
-
-;************************************************************
-;*****	RS-232 Rx	*****************************************
-;************************************************************
-RS232_Rx
-	BSF		ARxGLED			; Blink Green LED so we know RS-232 is Rx.
-	MOVFW	RCREG			; /
-	BTFSC	ServiceFlag		; This allow us insert a custom word to emulate we Rx data from RS-232 while debugging.
-	MOVFW	Testing			; /
-	MOVWF	ARxByte			; Save Rx data.
-	SUBLW	StartFlag		; Test for Start Flag B'01111110'
-	BTFSS	ZERO			; If Byte is equal to 0x7E then this is the Header.
-	GOTO	TestEscChar		; //// It is not 0x7E.
-	BTFSS	CARRY			; ///
-	GOTO	TestEscChar		; // It is not 0x7E.
-	GOTO	A_FooterRx		; /
-	RETURN
-
-A_FooterRx:
-	BCF		WritingBuffer		; Footer Flag received 0x7E.
-	MOVFW	ABufferInLen		; Save the number of words Rx.
-	BTFSS	ZERO				; Set a flag to know a frame was Rx.
-	BSF		DataReady			; /
-	BTFSS	ZERO				; Set a flag to know a frame was Rx.
-	BSF		CTS				; Set CTS so PC have to wait for PIC to be ready to receive next frame.
-	RETURN
-
-TestEscChar:
-	MOVFW	ARxByte			; Load Rx word.
-	SUBLW	EscapeOct		; Test for Escape Oct 0x7D.
-	BTFSS	ZERO			; If Byte is equal to 0x7D then this could be an escape character.
-	GOTO	RxAData			; ///
-	BTFSS	CARRY			; //
-	GOTO	RxAData			; /
-	BSF		EscapeCharFlag	; Escape Char Flag	
-	RETURN
-
-RxAData:
-	BTFSC	EscapeCharFlag	; If previous byte was an Escape Character
-	GOTO	EscChar			; /
-	BSF		WritingBuffer	; So we know the Buffer contains some Data.
-	CALL	SaveAsyncRx		; Save Byte on Buffer2.
-	RETURN
-
-EscChar:
-	BCF		EscapeCharFlag	; Clear the Escape Char Flag	
-	MOVFW	ARxByte
-	SUBLW	0x5E
-	BTFSS	ZERO			; If Byte is equal to 0x5E then it is a modified
-	GOTO	Char_5D			; /// Character.
-	BTFSS	CARRY			; //
-	GOTO	Char_5D			; /
-	MOVLW	0x7E			; Character 0x7E recovery. 
-	MOVWF	ARxByte
-	CALL	SaveAsyncRx		; Save Byte on Buffer2.
-	RETURN
-
-Char_5D:
-	MOVFW	ARxByte			; If Byte is equal to 0x5D ten it is a modified Character preceded by a header.
-	SUBLW	0x5D			; /////
-	BTFSS	ZERO			; ////
-	GOTO	RS232Rx_Err		; ///
-	BTFSS	CARRY			; //
-	GOTO	RS232Rx_Err		; /
-	MOVLW	0x7D			; Character 0x7D recovery. 
-	MOVWF	ARxByte			
-	BSF		WritingBuffer	; So we know the Buffer contains some Data.
-	CALL	SaveAsyncRx		; Save Byte on Buffer2.
-	RETURN
-
-RS232Rx_Err:
-	GOTO	$-0				; Reset the PIC overloading WDT.
-
-
 
 
 
@@ -965,8 +1038,8 @@ RS232Rx_Err:
 ;************************************************************
 
 ;*****	Save a ZERO from HDLC_Rx data	*****************************
-	ORG     H'200'		; This lot must be at 200H or higher.
-SaveZero	
+	ORG     H'232'		; This lot must be at 200H or higher.
+SaveZero:
 	INCF	BitIndex,F	; Move to next Bit slot.
 	MOVLW	H'02'		; Contain data tables for bit storage.
 	MOVWF	PCLATH
@@ -1012,7 +1085,7 @@ Bit7C:
 	RETURN
 
 ;*****	Save a ONE from HDLC_Rx	*****************************
-	ORG     H'230'		; This lot must be at 220H or higher.
+	ORG     H'260'		; This lot must be at 220H or higher.
 SaveOne	
 	INCF	BitIndex,F	; Move to next Bit slot.
 	MOVLW	H'02'		; Contain data tables for messages.
@@ -1070,7 +1143,7 @@ Bit7S:
 ;*****	Async HDLC Rx Save data	*****************************
 ;************************************************************
 	ORG     H'300'		; This lot must be at 300H or higher.
-SaveAsyncRx
+SaveAsyncRx:
 	MOVLW	H'03'		; Contain data tables for bit storage.
 	MOVWF	PCLATH
 	INCF	ABufferInLen,F	; Move to next WORD.
@@ -1109,6 +1182,7 @@ SaveAsyncRx
 	GOTO	SaveAsyncRx29
 	GOTO	SaveAsyncRx30
 	GOTO	SaveAsyncRx31
+
 	GOTO	SaveAsyncRx32
 	GOTO	SaveAsyncRx33
 	GOTO	SaveAsyncRx34
@@ -1172,7 +1246,34 @@ SaveAsyncRx
 	GOTO	SaveAsyncRx91
 	GOTO	SaveAsyncRx92
 	GOTO	SaveAsyncRx93
-	GOTO	START			; Buffer Overflow, so reboot PIC.
+
+	GOTO	SaveAsyncRx94
+	GOTO	SaveAsyncRx95
+	GOTO	SaveAsyncRx96
+	GOTO	SaveAsyncRx97
+	GOTO	SaveAsyncRx98
+	GOTO	SaveAsyncRx99
+	GOTO	SaveAsyncRx100
+	GOTO	SaveAsyncRx101
+	GOTO	SaveAsyncRx102
+	GOTO	SaveAsyncRx103
+	GOTO	SaveAsyncRx104
+	GOTO	SaveAsyncRx105
+	GOTO	SaveAsyncRx106
+	GOTO	SaveAsyncRx107
+	GOTO	SaveAsyncRx108
+	GOTO	SaveAsyncRx109
+	GOTO	SaveAsyncRx110
+	GOTO	SaveAsyncRx111
+	GOTO	SaveAsyncRx112
+	GOTO	SaveAsyncRx113
+	GOTO	SaveAsyncRx114
+	GOTO	SaveAsyncRx115
+	GOTO	SaveAsyncRx116
+	GOTO	SaveAsyncRx117
+	GOTO	SaveAsyncRx118
+	GOTO	SaveAsyncRx119
+	GOTO	$-0			; Buffer Overflow, so reboot PIC.
 
 SaveAsyncRx0:
 	MOVFW	ARxByte
@@ -1495,7 +1596,6 @@ SaveAsyncRx63:
 	MOVWF	ABufferIn63
 	BANK0
 	RETURN
-
 SaveAsyncRx64:
 	MOVFW	ARxByte
 	BANK1
@@ -1677,12 +1777,169 @@ SaveAsyncRx93:
 	MOVWF	ABufferIn93
 	BANK0X
 	RETURN
+
+SaveAsyncRx94:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn94
+	BANK0X
+	RETURN
+SaveAsyncRx95:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn95
+	BANK0X
+	RETURN
+SaveAsyncRx96:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn96
+	BANK0X
+	RETURN
+SaveAsyncRx97:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn97
+	BANK0X
+	RETURN
+SaveAsyncRx98:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn98
+	BANK0X
+	RETURN
+SaveAsyncRx99:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn99
+	BANK0X
+	RETURN
+SaveAsyncRx100:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn100
+	BANK0X
+	RETURN
+SaveAsyncRx101:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn101
+	BANK0X
+	RETURN
+SaveAsyncRx102:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn102
+	BANK0X
+	RETURN
+SaveAsyncRx103:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn103
+	BANK0X
+	RETURN
+SaveAsyncRx104:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn104
+	BANK0X
+	RETURN
+SaveAsyncRx105:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn105
+	BANK0X
+	RETURN
+SaveAsyncRx106:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn106
+	BANK0X
+	RETURN
+SaveAsyncRx107:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn107
+	BANK0X
+	RETURN
+SaveAsyncRx108:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn108
+	BANK0X
+	RETURN
+SaveAsyncRx109:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn109
+	BANK0X
+	RETURN
+SaveAsyncRx110:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn110
+	BANK0X
+	RETURN
+SaveAsyncRx111:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn111
+	BANK0X
+	RETURN
+SaveAsyncRx112:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn112
+	BANK0X
+	RETURN
+SaveAsyncRx113:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn113
+	BANK0X
+	RETURN
+SaveAsyncRx114:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn114
+	BANK0X
+	RETURN
+SaveAsyncRx115:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn115
+	BANK0X
+	RETURN
+SaveAsyncRx116:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn116
+	BANK0X
+	RETURN
+SaveAsyncRx117:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn117
+	BANK0X
+	RETURN
+SaveAsyncRx118:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn118
+	BANK0X
+	RETURN
+SaveAsyncRx119:
+	MOVFW	ARxByte
+	BANK1X
+	MOVWF	ABufferIn119
+	BANK0X
+	RETURN
 	
 ;************************************************************
 ;*****	HDLC Transmit	*************************************
 ;************************************************************
-	ORG     H'500'			; This lot must be at 500H or higher.
-HDLC_Tx
+	ORG     H'5A0'			; This lot must be at 5A0H or higher.
+HDLC_Tx:
 	BTFSS	HeaderBeingTx
 	GOTO	LoadSyncTx
 TxHeaderLoop:
@@ -1700,7 +1957,7 @@ TxHeaderLoop:
 	GOTO	TxHeaderOne		; ///
 	GOTO	TxHeaderOne		; //
 	GOTO	TxHeaderLastZero; /
-	RETURN
+	GOTO	$-0			; Table Overflow, so reboot PIC.
 TxHeaderZero:
 	BCF		TxBitRAM
 	BSF		HeaderBeingTx
@@ -1718,14 +1975,14 @@ TxHeaderLastZero:
 	RETURN
 
 ; **************************************************************************
-	ORG     H'520'			; This lot must be at 520H or higher.
+	ORG     H'600'			; This lot must be at 520H or higher.
 LoadSyncTx:
 	MOVFW	SBufferOutLen	; Check how many bytes we have to Tx via Sync HDLC.
 	SUBWF	TxByteIndex,W
 	BTFSC	ZERO			; If there were all transmited thru HDLC then Tx Header/Footer.
 	GOTO	TxHeaderLoop	;	Start sending the Header again.
 							; Else, get next Byte to Tx.
-	MOVLW	H'05'			;	Contain data tables for Byte storage.
+	MOVLW	H'06'			;	Contain data tables for Byte storage.
 	MOVWF	PCLATH
 	MOVFW	TxByteIndex
 	ADDWF	PCL,F
@@ -1761,6 +2018,7 @@ LoadSyncTx:
 	GOTO	LoadSyncTx29
 	GOTO	LoadSyncTx30
 	GOTO	LoadSyncTx31
+
 	GOTO	LoadSyncTx32
 	GOTO	LoadSyncTx33
 	GOTO	LoadSyncTx34
@@ -1801,6 +2059,7 @@ LoadSyncTx:
 	GOTO	LoadSyncTx69
 	GOTO	LoadSyncTx70
 	GOTO	LoadSyncTx71
+
 	GOTO	LoadSyncTx72
 	GOTO	LoadSyncTx73
 	GOTO	LoadSyncTx74
@@ -1823,168 +2082,162 @@ LoadSyncTx:
 	GOTO	LoadSyncTx91
 	GOTO	LoadSyncTx92
 	GOTO	LoadSyncTx93
-	GOTO	START			; Buffer Overflow, so reboot PIC.
+	GOTO	LoadSyncTx94
+	GOTO	LoadSyncTx95
+	GOTO	LoadSyncTx96
+	GOTO	LoadSyncTx97
+	GOTO	LoadSyncTx98
+	GOTO	LoadSyncTx99
+	GOTO	LoadSyncTx100
+	GOTO	LoadSyncTx101
+	GOTO	LoadSyncTx102
+	GOTO	LoadSyncTx103
+	GOTO	LoadSyncTx104
+	GOTO	LoadSyncTx105
+	GOTO	LoadSyncTx106
+	GOTO	LoadSyncTx107
+	GOTO	LoadSyncTx108
+	GOTO	LoadSyncTx109
+	GOTO	LoadSyncTx110
+	GOTO	LoadSyncTx111
+	GOTO	LoadSyncTx112
+	GOTO	LoadSyncTx113
+	GOTO	LoadSyncTx114
+	GOTO	LoadSyncTx115
+	GOTO	LoadSyncTx116
+	GOTO	LoadSyncTx117
+	GOTO	LoadSyncTx118
+	GOTO	LoadSyncTx119
+	GOTO	$-0			; Table Overflow, so reboot PIC.
 
 LoadSyncTx0:
 	MOVFW	SBufferOut0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx1:
 	MOVFW	SBufferOut1
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx2:
 	MOVFW	SBufferOut2
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx3:
 	MOVFW	SBufferOut3
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx4:
 	MOVFW	SBufferOut4
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx5:
 	MOVFW	SBufferOut5
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx6:
 	MOVFW	SBufferOut6
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx7:
 	MOVFW	SBufferOut7
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx8:
 	MOVFW	SBufferOut8
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx9:
 	MOVFW	SBufferOut9
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx10:
 	MOVFW	SBufferOut10
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx11:
 	MOVFW	SBufferOut11
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx12:
 	MOVFW	SBufferOut12
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx13:
 	MOVFW	SBufferOut13
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx14:
 	MOVFW	SBufferOut14
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx15:
 	MOVFW	SBufferOut15
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx16:
 	MOVFW	SBufferOut16
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx17:
 	MOVFW	SBufferOut17
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx18:
 	MOVFW	SBufferOut18
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx19:
 	MOVFW	SBufferOut19
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx20:
 	MOVFW	SBufferOut20
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx21:
 	MOVFW	SBufferOut21
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx22:
 	MOVFW	SBufferOut22
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx23:
 	MOVFW	SBufferOut23
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx24:
 	MOVFW	SBufferOut24
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx25:
 	MOVFW	SBufferOut25
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx26:
 	MOVFW	SBufferOut26
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx27:
 	MOVFW	SBufferOut27
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx28:
 	MOVFW	SBufferOut28
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx29:
 	MOVFW	SBufferOut29
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx30:
 	MOVFW	SBufferOut30
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx31:
 	MOVFW	SBufferOut31
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 
 LoadSyncTx32:
 	BANK1
@@ -1992,280 +2245,240 @@ LoadSyncTx32:
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx33:
 	BANK1
 	MOVFW	SBufferOut33
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx34:
 	BANK1
 	MOVFW	SBufferOut34
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx35:
 	BANK1
 	MOVFW	SBufferOut35
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx36:
 	BANK1
 	MOVFW	SBufferOut36
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx37:
 	BANK1
 	MOVFW	SBufferOut37
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx38:
 	BANK1
 	MOVFW	SBufferOut38
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx39:
 	BANK1
 	MOVFW	SBufferOut39
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx40:
 	BANK1
 	MOVFW	SBufferOut40
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx41:
 	BANK1
 	MOVFW	SBufferOut41
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx42:
 	BANK1
 	MOVFW	SBufferOut42
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx43:
 	BANK1
 	MOVFW	SBufferOut43
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx44:
 	BANK1
 	MOVFW	SBufferOut44
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx45:
 	BANK1
 	MOVFW	SBufferOut45
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx46:
 	BANK1
 	MOVFW	SBufferOut46
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx47:
 	BANK1
 	MOVFW	SBufferOut47
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx48:
 	BANK1
 	MOVFW	SBufferOut48
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx49:
 	BANK1
 	MOVFW	SBufferOut49
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx50:
 	BANK1
 	MOVFW	SBufferOut50
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx51:
 	BANK1
 	MOVFW	SBufferOut51
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx52:
 	BANK1
 	MOVFW	SBufferOut52
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx53:
 	BANK1
 	MOVFW	SBufferOut53
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx54:
 	BANK1
 	MOVFW	SBufferOut54
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx55:
 	BANK1
 	MOVFW	SBufferOut55
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx56:
 	BANK1
 	MOVFW	SBufferOut56
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx57:
 	BANK1
 	MOVFW	SBufferOut57
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx58:
 	BANK1
 	MOVFW	SBufferOut58
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx59:
 	BANK1
 	MOVFW	SBufferOut59
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx60:
 	BANK1
 	MOVFW	SBufferOut60
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx61:
 	BANK1
 	MOVFW	SBufferOut61
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx62:
 	BANK1
 	MOVFW	SBufferOut62
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx63:
 	BANK1
 	MOVFW	SBufferOut63
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx64:
 	BANK1
 	MOVFW	SBufferOut64
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx65:
 	BANK1
 	MOVFW	SBufferOut65
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx66:
 	BANK1
 	MOVFW	SBufferOut66
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx67:
 	BANK1
 	MOVFW	SBufferOut67
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx68:
 	BANK1
 	MOVFW	SBufferOut68
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx69:
 	BANK1
 	MOVFW	SBufferOut69
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx70:
 	BANK1
 	MOVFW	SBufferOut70
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx71:
 	BANK1
 	MOVFW	SBufferOut71
 	BANK0
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 	
 LoadSyncTx72:
 	BANK1X
@@ -2273,160 +2486,294 @@ LoadSyncTx72:
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx73:
 	BANK1X
 	MOVFW	SBufferOut73
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx74:
 	BANK1X
 	MOVFW	SBufferOut74
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx75:
 	BANK1X
 	MOVFW	SBufferOut75
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx76:
 	BANK1X
 	MOVFW	SBufferOut76
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx77:
 	BANK1X
 	MOVFW	SBufferOut77
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx78:
 	BANK1X
 	MOVFW	SBufferOut78
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx79:
 	BANK1X
 	MOVFW	SBufferOut79
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx80:
 	BANK1X
 	MOVFW	SBufferOut80
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx81:
 	BANK1X
 	MOVFW	SBufferOut81
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx82:
 	BANK1X
 	MOVFW	SBufferOut82
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx83:
 	BANK1X
 	MOVFW	SBufferOut83
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx84:
 	BANK1X
 	MOVFW	SBufferOut84
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx85:
 	BANK1X
 	MOVFW	SBufferOut85
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx86:
 	BANK1X
 	MOVFW	SBufferOut86
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx87:
 	BANK1X
 	MOVFW	SBufferOut87
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx88:
 	BANK1X
 	MOVFW	SBufferOut88
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx89:
 	BANK1X
 	MOVFW	SBufferOut89
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx90:
 	BANK1X
 	MOVFW	SBufferOut90
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx91:
 	BANK1X
 	MOVFW	SBufferOut91
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx92:
 	BANK1X
 	MOVFW	SBufferOut92
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 LoadSyncTx93:
 	BANK1X
 	MOVFW	SBufferOut93
 	BANK0X
 	MOVWF	SyncTxByte
 	GOTO	TxBitStuff
-	RETURN
 
+LoadSyncTx94:
+	BANK1X
+	MOVFW	SBufferOut94
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx95:
+	BANK1X
+	MOVFW	SBufferOut95
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx96:
+	BANK1X
+	MOVFW	SBufferOut96
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx97:
+	BANK1X
+	MOVFW	SBufferOut97
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx98:
+	BANK1X
+	MOVFW	SBufferOut98
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx99:
+	BANK1X
+	MOVFW	SBufferOut99
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx100:
+	BANK1X
+	MOVFW	SBufferOut100
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx101:
+	BANK1X
+	MOVFW	SBufferOut101
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx102:
+	BANK1X
+	MOVFW	SBufferOut102
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx103:
+	BANK1X
+	MOVFW	SBufferOut103
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx104:
+	BANK1X
+	MOVFW	SBufferOut104
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx105:
+	BANK1X
+	MOVFW	SBufferOut105
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx106:
+	BANK1X
+	MOVFW	SBufferOut106
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx107:
+	BANK1X
+	MOVFW	SBufferOut107
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx108:
+	BANK1X
+	MOVFW	SBufferOut108
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx109:
+	BANK1X
+	MOVFW	SBufferOut109
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx110:
+	BANK1X
+	MOVFW	SBufferOut110
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
 
+LoadSyncTx111:
+	BANK1X
+	MOVFW	SBufferOut111
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx112:
+	BANK1X
+	MOVFW	SBufferOut112
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx113:
+	BANK1X
+	MOVFW	SBufferOut113
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx114:
+	BANK1X
+	MOVFW	SBufferOut114
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx115:
+	BANK1X
+	MOVFW	SBufferOut115
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx116:
+	BANK1X
+	MOVFW	SBufferOut116
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx117:
+	BANK1X
+	MOVFW	SBufferOut117
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx118:
+	BANK1X
+	MOVFW	SBufferOut118
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
+LoadSyncTx119:
+	BANK1X
+	MOVFW	SBufferOut119
+	BANK0X
+	MOVWF	SyncTxByte
+	GOTO	TxBitStuff
 
 
 ; ***************************************************************************
-	ORG     H'260'			; This lot must be at 260H or higher.
+	ORG     H'290'			; This lot must be at 290H or higher.
 TxBitStuff:
 	MOVLW	H'02'			; Contain data tables for bit storage.
 	MOVWF	PCLATH
@@ -2442,7 +2789,7 @@ TxBitStuff:
 	GOTO	TxData5		; ///
 	GOTO	TxData6		; //
 	GOTO	TxData7		; /
-
+	GOTO	$-0			; Table Overflow, so reboot PIC.
 TxData0:
 	BTFSS	SyncTxByte,0
 	CALL	ZEROBit
@@ -2500,7 +2847,7 @@ ZEROBit:	; Look for every 5 consecutive ONEs and insert a ZERO.
 	BCF		TxBitRAM		; Data to be Tx.
 	RETURN
 ONEBit:
-	MOVFW	TxOnesCount		; Review last number of consecutive ONEs.
+	MOVF	TxOnesCount,W		; Review last number of consecutive ONEs.
 	SUBLW	0x04
 	BTFSC	ZERO			; If there were already five ONEs then this is ONE number six so:
 	GOTO	StartBitStuff	; goto ZEROBit to send an extra Zero.	
@@ -2523,102 +2870,6 @@ InsZeroBit:
 
 
 
-
-
-
-;*****	Debug test patterns	*****************************
-A2S_TestPat
-	MOVLW	0x7E		; Header
-	MOVWF	Testing	
-	CALL	RS232_Rx
-	MOVLW	0x7D;FD
-	MOVWF	Testing	
-	CALL	RS232_Rx
-	MOVLW	0xFF;01
-	MOVWF	Testing	
-	CALL	RS232_Rx
-	MOVLW	0xBE
-	MOVWF	Testing	
-	CALL	RS232_Rx
-	MOVLW	0xD2
-	MOVWF	Testing	
-	CALL	RS232_Rx
-	MOVLW	0x7E		; Footer
-	MOVWF	Testing	
-	CALL	RS232_Rx
-
-	CALL	HDLC_Tx	;Footer
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-
-	CALL	HDLC_Tx	;1
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-
-	CALL	HDLC_Tx	;2
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-
-	CALL	HDLC_Tx	;3
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-
-	CALL	HDLC_Tx	; 4
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-
-	CALL	HDLC_Tx	; Footer
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-
-	CALL	HDLC_Tx	; Footer
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-	CALL	HDLC_Tx
-
-
-
-	RETURN
-
-
-
-
-
-
+	;ORG 0x1FFF		; Last Program byte available for 16F887.
+	;NOP
 	END	;************************************
