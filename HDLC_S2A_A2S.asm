@@ -1,8 +1,8 @@
 ;************************************************************************
 ;																		*
-;	Filename:	    HDLC S2A A2S v44.asm								*
-;	Date:			Nov 13, 2019.										*
-;	File Version:	4.4													*
+;	Filename:	    HDLC S2A A2S v45.asm								*
+;	Date:			Nov 14, 2019.										*
+;	File Version:	4.5													*
 ;																		*
 ;	Author:		Juan Carlos Pérez De Castro (Wodie)	KM4NNO / XE1F		*
 ;	Project advisor:	Bryan Fiels W9CR								*
@@ -22,9 +22,10 @@
 ;	RS-232 Reset CMD Bug fixed.											*
 ;	CTS Deprecated.														*
 ;	A.S Memory extended to 120 Bytes.									*
+;	Hardware Reset will need a Not gate chip on PCB.					*
 ;																		*
 ;	***	Missing:														*
-;	Bug fix on A>S (RS-232 to HDLC).									*
+;	2nd Bug patch deeper test on A>S (RS-232 to HDLC), seems to work.	*
 ;																		*
 ;************************************************************************
 	Title	"S>A HDLC & A>S HDLC interface for P25NX Quantar"
@@ -71,11 +72,11 @@
 #DEFINE	FooterWasTx		FLAGS_2,6		; /
 
 ;*****	Define program constants
-;	INT_RAM		EQU	H'20'	; 96 General Porpouse registers 0x20 thru 0x7F.
-;	COMMON_RAM1	EQU	H'28'
-;	COMMON_RAM2	EQU	H'A0'	; F0 thru FF are common Access RAM.
-;	COMMON_RAM3	EQU	H'110'	; //
-;	COMMON_RAM4	EQU	H'190'	; /
+	INT_RAM		EQU	H'20'	; 96 General Porpouse registers 0x20 thru 0x7F.
+	COMMON_RAM1	EQU	H'30'
+	COMMON_RAM2	EQU	H'A0'	; F0 thru FF are common Access RAM.
+	COMMON_RAM3	EQU	H'110'	; //
+	COMMON_RAM4	EQU	H'190'	; /
 	Osc_Freq	EQU	20000000; 20 MHz
 	Baud_Rate	EQU	19200; 19.200 kbauds
 	Baud_Rate_Const	EQU (Osc_Freq/(16*Baud_Rate))-1
@@ -83,14 +84,14 @@
 
 ;*****	SET UP RAM	***************************************
 ;***	Define interrupt handler variables
-	CBLOCK 0x20	;INT_RAM
+	CBLOCK INT_RAM
 	W_TEMP
 	S_TEMP
 	P_TEMP
 	FSR_TEMP
 	ENDC
 ;***	DEFINE RAM 1
-	CBLOCK 0x30
+	CBLOCK COMMON_RAM1
 	ABufferIn0	; These are the RAM Bytes used to Rx
 	ABufferIn1	; from Async HDLC.
 	ABufferIn2
@@ -157,26 +158,6 @@
 	SBufferOut30
 	SBufferOut31
 	ENDC
-	CBLOCK 0x70	;COMMON_RAM1
-	FLAGS_1		; Bit variables
-	FLAGS_2		; Bit variables
-	BitIndex	; HDLC Rx bit position
-	OnesCount	; Continous 1 counter
-	SRxByte		; Sync: RAM for the HDLC Rx Byte	
-
-	ATxByte		; Async: Byte to be Tx via RS-232	
-	ARxByte
-	TxBitIndex
-	TxOnesCount
-	TxByteIndex
-	SyncTxByte
-
-	ABufferInLen; Counter for Async Bytes Rx.
-	SBufferOutLen; Counter for Sync Bytes to Tx.
-	DataIndex	; Counter of Bytes Tx (table position index).
-	Testing
-	ENDC
-
 ;***	DEFINE RAM 2
 	CBLOCK 0xA0	;COMMON_RAM2
 	ABufferIn32
@@ -361,6 +342,26 @@
 	SBufferOut118
 	SBufferOut119
 	ENDC
+	CBLOCK 0x70	;COMMON_RAM1
+	FLAGS_1		; Bit variables
+	FLAGS_2		; Bit variables
+	BitIndex	; HDLC Rx bit position
+	OnesCount	; Continous 1 counter
+	SRxByte		; Sync: RAM for the HDLC Rx Byte	
+
+	ATxByte		; Async: Byte to be Tx via RS-232	
+	ARxByte
+	TxBitIndex
+	TxOnesCount
+	TxByteIndex
+	SyncTxByte
+
+	ABufferInLen; Counter for Async Bytes Rx.
+	SBufferOutLen; Counter for Sync Bytes to Tx.
+	DataIndex	; Counter of Bytes Tx (table position index).
+	Testing
+	ENDC
+
 
 
 
@@ -387,11 +388,15 @@
     GOTO	INTEND		; No, exit int.
 
 HDLCRx:	BCF	INTCON,INTF	; Clear int RB0 flag.
+	CALL	HDLC_Rx		; Read RxPin from Quantar and save it on Buffer.
+	MOVLW	0x17		; Delay to reduce bit errors IDK, but it make it work.
+	DECF	W,W			; ///
+	BTFSC	ZERO		; //
+	GOTO	$-2			; /
 	BTFSC	TxBitRAM	; If Data is a 1 set output.
 	BSF		TxPin		; / Make it 1.
 	BTFSS	TxBitRAM	; If Data is a 0 clear output.
 	BCF		TxPin		; / Make it 0.
-	CALL	HDLC_Rx		; Read RxPin from Quantar and save it on Buffer.
 	CALL	HDLC_Tx		; Prepare next TxBit (Pre-load).
     GOTO	INTEND
 
@@ -660,8 +665,7 @@ NOT0x7E:
 	GOTO	NOT0x7D			;  Not a 0x7D. 
 	BTFSS	CARRY			;
 	GOTO	NOT0x7D			;  Not a 0x7D.
-InsEsc:
-	; EscapeCharInsert:
+InsEsc:	; EscapeCharInsert:
 	MOVLW	0x7D			; Insert Escape Character 0x7D.
 	BTFSS	PIR1,TXIF		; ///	Tx Char.
 	GOTO	$-1				; //
@@ -1021,8 +1025,8 @@ SwapMem_A_S:
 	MOVFW	ABufferIn119
 	MOVWF	SBufferOut119
 	BANK0X
-	CLRF	TxOnesCount
-	BCF		AddZeroBit
+	CLRF	TxOnesCount		; Clear consecutive ones counter.
+	BCF		AddZeroBit		; /
 	MOVFW	ABufferInLen	; Pass Data Length to be Tx.
 	MOVWF	SBufferOutLen
 	CLRF	ABufferInLen
@@ -1038,7 +1042,7 @@ SwapMem_A_S:
 ;************************************************************
 
 ;*****	Save a ZERO from HDLC_Rx data	*****************************
-	ORG     H'232'		; This lot must be at 200H or higher.
+	ORG     H'240'		; This lot must be at 240H or higher.
 SaveZero:
 	INCF	BitIndex,F	; Move to next Bit slot.
 	MOVLW	H'02'		; Contain data tables for bit storage.
@@ -1085,7 +1089,7 @@ Bit7C:
 	RETURN
 
 ;*****	Save a ONE from HDLC_Rx	*****************************
-	ORG     H'260'		; This lot must be at 220H or higher.
+	ORG     H'270'		; This lot must be at 270H or higher.
 SaveOne	
 	INCF	BitIndex,F	; Move to next Bit slot.
 	MOVLW	H'02'		; Contain data tables for messages.
@@ -1273,6 +1277,7 @@ SaveAsyncRx:
 	GOTO	SaveAsyncRx117
 	GOTO	SaveAsyncRx118
 	GOTO	SaveAsyncRx119
+
 	GOTO	$-0			; Buffer Overflow, so reboot PIC.
 
 SaveAsyncRx0:
@@ -1934,7 +1939,7 @@ SaveAsyncRx119:
 	MOVWF	ABufferIn119
 	BANK0X
 	RETURN
-	
+		
 ;************************************************************
 ;*****	HDLC Transmit	*************************************
 ;************************************************************
@@ -1975,7 +1980,7 @@ TxHeaderLastZero:
 	RETURN
 
 ; **************************************************************************
-	ORG     H'600'			; This lot must be at 520H or higher.
+	ORG     H'600'			; This lot must be at 600H or higher.
 LoadSyncTx:
 	MOVFW	SBufferOutLen	; Check how many bytes we have to Tx via Sync HDLC.
 	SUBWF	TxByteIndex,W
@@ -2773,7 +2778,7 @@ LoadSyncTx119:
 
 
 ; ***************************************************************************
-	ORG     H'290'			; This lot must be at 290H or higher.
+	ORG     H'2A0'			; This lot must be at 2A0H or higher.
 TxBitStuff:
 	MOVLW	H'02'			; Contain data tables for bit storage.
 	MOVWF	PCLATH
