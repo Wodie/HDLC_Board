@@ -13,29 +13,35 @@ use IO::Socket;
 use IO::Socket::INET;
 use IO::Socket::Multicast;
 use Class::Struct;
-
-
-#use Net::OpenVPN::Manage; # For VPN.
+#use RPi::Pin;
+#use RPi::Const qw(:all);
 
 
 # About Message.
 print "P25NX v3.0.0\n";
-print "Released: November 07, 2019. Created October 17, 2019.\n";
-print "Created by: Juan Carlos Pérez De Castro (Wodie) KM4NNO / XE1F.\n";
+print "Released: November 21, 2019. Created October 17, 2019.\n";
+print "Created by: Juan Carlos Pérez De Castro (Wodie) KM4NNO / XE1F\n";
+print "and Bryan Fields W9CR.\n";
 print "www.wodielite.com\n";
-print "wodielite at mac.com\n";
-print "+52(55)54356002\n\n";
+print "wodielite at mac.com\n\n";
 
 # Load Settings ini file.
 print "Loading Settings...\n";
 my $cfg = Config::IniFiles->new( -file => "config.ini");
 # Settings:
-my $Mode = $cfg->val('Settings', 'Mode'); #0 Serial, 1 STUN
-my $P25NX_STUN_ID = sprintf("%x", $cfg->val('Settings', 'STUN_ID'));
-my $LocalHost = $cfg->val('Settings', 'LocalHost');
+my $Mode = $cfg->val('Settings', 'Mode'); #0 = v.24, no other modes coded at the momment.
+my $LocalHost = $cfg->val('Settings', 'Local_Host');
+my $P25NX_STUN_ID = sprintf("%x", hex($cfg->val('Settings', 'STUN_ID')));
+my $P25NX_Enabled = $cfg->val('Settings', 'P25NX_Enabled');
+my $P25NXv3_Enabled = $cfg->val('Settings', 'P25NXv3_Enabled');
+my $Cisco_DMVPN_Enabled = $cfg->val('Settings', 'Cisco_DMVPN_Enabled'); # Need Cisco DMVPN.
+my $MMDVM_Enabled = $cfg->val('Settings', 'MMDVM_Enabled');
 print "  Mode = $Mode\n";
-print "  Stun ID = $P25NX_STUN_ID\n";
-print "  Local Host = $LocalHost\n";
+print "  Stun ID = 0x$P25NX_STUN_ID\n";
+print "  P25NX Enabled = $P25NX_Enabled\n";
+print "  P25NX v3 Enabled = $P25NXv3_Enabled\n";
+print "  Cisco DMVPN Enabled = $Cisco_DMVPN_Enabled\n";
+print "  MMDVM Enabled = $MMDVM_Enabled\n";
 # Preferences
 my $Language = $cfg->val('Preferences', 'Language');
 my $Verbose = $cfg->val('Preferences', 'Verbose');
@@ -60,7 +66,7 @@ print "  Use Remote COurtesy Tone = $UseRemoteCourtesyTone\n";
 
 # User:
 my $Callsign = $cfg->val('User', 'Callsign');
-my $RadioID = sprintf("%x", $cfg->val('User', 'RadioID'));
+my $RadioID = sprintf("%d", $cfg->val('User', 'RadioID'));
 print "  Callsign = $Callsign\n";
 print "  Repeater RadioID = $RadioID\n";
 # Reflectors
@@ -72,41 +78,103 @@ for (my $x = 0; $x < scalar(@Reflectors); $x++) {
 
 print "  Reflectors Database/MMDVM talk groups.\n"; my @Links = (
 	#[P25NX TG, MMDVM TG, 'Ref. Address', Port],
-#	[10200, 10200, 'stn5995.ip.irlp.net', 41000], 
-#	[10201, 10201, 'stn5995.ip.irlp.net', 41001], 
-#	[10202, 10202, 'stn5995.ip.irlp.net', 41002],
-#	[10203, 10203, 'stn5995.ip.irlp.net', 41003],
-#	[10204, 10204, 'stn5995.ip.irlp.net', 41004],
-#	[10205, 10205, 'stn5995.ip.irlp.net', 41005],
-#	[10300, 10300, '176.9.1.168', 41000],
-#	[10310, 10310, '44.148.230.100', 41000],
-#	[10320, 10320, '46.41.0.214', 41000],
-#	[10328, 10328, '5.9.59.26', 41000],
-#	[10402, 10402, '47.104.177.248', 41000],
-#	[10403, 10403, '120.234.41.144', 41000], 
-	# Local Network addresses:
-#	[10245, 3345, '192.168.0.100', 41000],
-#	[10234, 334, '192.168.0.100', 41001],
-#	[10209, 33409, '192.168.0.100', 41002],
+	[420, 420, 'p25.evsuperfreqs.com', 41000],
+	[530, 530, 'zldigitalreflectors.hopto.org', 41000],
+	[707, 707, '707p25.kd0ioe.com', 41000],
+	[2140, 2140, '94.177.235.81', 41000],
+	[2503, 2503, 'p25.r1ik.ru', 41000],
+	[3023, 3023, 'ontxlink.hopto.org', 41000],
+	[5057, 5057, '45.248.50.37', 41000],
+	[6395, 6395, 'p25ref.nf9k.net', 41000],
+	# New P25NX Reflector:
+	[10100, 10100, '0.0.0.0', 41000],
+	[10101, 10101, '0.0.0.0', 41001],
+	[10102, 10102, '0.0.0.0', 41002],
+	[10103, 10103, '0.0.0.0', 41003],
+	[10200, 10200, '0.0.0.0', 41004],
+	[10201, 10201, '0.0.0.0', 41005],
+	[10202, 10202, '0.0.0.0', 41006],
 	[10203, 10203, '192.168.0.100', 41003],
-	[10104, 10104, '192.168.0.100', 41004],
-	[10295, 10295, '192.168.0.100', 41005]
-#	[10240, 4095, '192.168.0.100', 41010]
+	[10300, 10300, '0.0.0.0', 41008],
+	[10301, 10301, '0.0.0.0', 41009],
+	[10302, 10302, '0.0.0.0', 41010],
+	[10303, 10303, '0.0.0.0', 41011],
+#	[10310, 10310, '0.0.0.0', 41000],
+#	[10320, 10320, '0.0.0.0', 41000],
+	[10400, 10400, '0.0.0.0', 41012],
+	[10401, 10401, '0.0.0.0', 41013],
+	[10402, 10402, '0.0.0.0', 41014],
+	[10403, 10403, '0.0.0.0', 41015],
+	# Isolated MMDVM reflectors:
+#	[10100, 10100, 'm1geo.com', 41000],
+#	[10200, 10200, 'dvswitch.org', 41000],
+#	[10201, 10201, 'dvswitch.org, 41010],
+#	[10300, 10300, '176.9.1.168', 41000],
+#	[10301, 10301, 'ea5gvk.duckdns.org', 41000],
+#	[10310, 10310, '44.148.230.100', 41000],
+#	[10320, 10320, '78.47..206..12', 41000],
+#	[10328, 10328, '5.9.59.26', 41000],
+#	[10342, 10342, 'P25R.northwestdigital.club', 41000],
+#	[10350, 10350, 'warc.ddns.net', 41000],
+#	[10400, 10400, 'pacificp25.repeaters.info', 41000],
+#	[10401, 10401, 'pacifictac1.repeaters.info', 41010],
+#	[10402, 10402, '47.104.177.248', 41000],
+#	[10403, 10403, '120.234.41.144', 41000],
+#	[10404, 10404, 'p25tw338.ddns.net', 41000],
+	# MMDVM Reflectors:
+	[10700, 10700, 'p25nsw.gustotech.net', 41000],
+	[23225, 23255, '94.199.173.123', 41000],
+	[25641, 25641, '194.182.85.217', 41000],
+	[28299, 28299, '65.101.7.51', 41000],
+	[30639, 30693, 'wiresxdigi.dyndns.org', 41000],
+	[31010, 31010, 'p25.alabamalink.info', 41000],
+	[31062, 31062, 'p25.mw-dmr.net', 41000],
+	[31088, 31088, '54.191.50.212', 41000],
+	[31092, 31092, 'p25.alecwasserman.com', 41000],
+	[31171, 31171, '74.208.235.115', 41000],
+	[31188, 31188, 'w9windigital.org', 41000],
+	[31665, 31665, '18.223.66.56', 41000],
+	[31672, 31672, 'p25-31672.pistar.uk', 41000],
+	[31341, 31341, 'p25.kc2idb.net', 41000],
+	[31777, 31777, '45.77.204.214', 41000],
+	[31888, 31888, 'p25.kg4jpl.com', 41000],
+	[40721, 40721, '38.110.97.161', 41000],
+	[50525, 50525, '505.p25dvm.com', 41000],
+	[53099, 53099, '203.86.206.49', 41000]
 	);
 my $NumberOfReflectors = scalar @Links; # Length of the array.
 for (my $x = 0; $x < $NumberOfReflectors; $x++) {
-	print "    Link " . $x . " P25NX TG " . $Links[$x][0] .
-		" MMDVM TG " . $Links[$x][1] .
-		" IP " . $Links[$x][2] . 
-		" Port " . $Links[$x][3] .  "\n";
+#	print "    Link " . $x . " P25NX TG " . $Links[$x][0] .
+#		" MMDVM TG " . $Links[$x][1] .
+#		" IP " . $Links[$x][2] . 
+#		" Port " . $Links[$x][3] .  "\n";
 }
 print "  Total number of Reflectors found = " . $NumberOfReflectors . "\n\n";
 
 # Voice Announce.
 print "Loading voice announcements...\n";
 my $SpeechFile = Config::IniFiles->new( -file => "Speech.ini");
-my @SystemStart = $SpeechFile->val('SystemStart', 'byte');
-my @DefaultSpeech = $SpeechFile->val('DefaultSpeech', 'byte');
+my @Speech_SystemStart = $SpeechFile->val('speech_SystemStart', 'byte');
+my @Speech_DefaultRevert = $SpeechFile->val('speech_DefaultRevert', 'byte');
+my @HDLC_TestPattern = $SpeechFile->val('HDLC_TestPattern', 'byte');
+my @Speech_WW = $SpeechFile->val('speech_WW', 'byte');
+my @Speech_WWTac1 = $SpeechFile->val('speech_WWTac1', 'byte');
+my @Speech_WWTac2 = $SpeechFile->val('speech_WWTac2', 'byte');
+my @Speech_WWTac3 = $SpeechFile->val('speech_WWTac3', 'byte');
+my @Speech_NA = $SpeechFile->val('speech_NA', 'byte');
+my @Speech_NATac1 = $SpeechFile->val('speech_NATac1', 'byte');
+my @Speech_NATac2 = $SpeechFile->val('speech_NATac2', 'byte');
+my @Speech_NATac3 = $SpeechFile->val('speech_NATac3', 'byte');
+my @Speech_Europe = $SpeechFile->val('speech_Europe', 'byte');
+my @Speech_EuTac1 = $SpeechFile->val('speech_EuTac1', 'byte');
+my @Speech_EuTac2 = $SpeechFile->val('speech_EuTac2', 'byte');
+my @Speech_EuTac3 = $SpeechFile->val('speech_EuTac3', 'byte');
+my @Speech_France = $SpeechFile->val('speech_France', 'byte');
+my @Speech_Germany = $SpeechFile->val('speech_Germany', 'byte');
+my @Speech_Pacific = $SpeechFile->val('speech_Pacific', 'byte');
+my @Speech_PacTac1 = $SpeechFile->val('speech_PacTac1', 'byte');
+my @Speech_PacTac2 = $SpeechFile->val('speech_PacTac2', 'byte');
+my @Speech_PacTac3 = $SpeechFile->val('speech_PacTac3', 'byte');
 print "\n";
 
 
@@ -165,6 +233,7 @@ struct Quant => {
 	Raw0x71 => '$',
 	Raw0x72 => '$',
 	Raw0x73 => '$',
+	SuperFrame => '$',
 };
 my $Quant = Quant->new();
 $Quant->AstroTalkGroup(0x00);
@@ -254,34 +323,8 @@ if ($Mode == 0) {
 	$FutureTickCount = $TickCount + 5000;
 	print "TickCount = $TickCount\n\n";
 }
-
-# Init CIsco STUN TCP Server
-print "Init CIsco STUN.\n";
-my $CiscoSTUN_Port = 1994;
-my $CiscoSTUN_ClientAddress;
-my $CiscoSTUN_ClientPort;
-my $CiscoSTUN_Sock;
-my $CiscoSTUN_Sel;
-if ($Mode == 1) {
-	$CiscoSTUN_Sock = IO::Socket::INET->new(
-#		PeerAddr => '172.31.7.129',
-		LocalPort => $CiscoSTUN_Port,
-		Proto => 'tcp',
-		Listen => 5,
-		ReuseAddr => 1,
-		Type => SOCK_STREAM,
-#		PeerPort => $CiscoSTUN_Port
-		) or die "Can not init TCP STUN : $@\n";
-	$CiscoSTUN_Sel = IO::Select->new($CiscoSTUN_Sock);
-#	setsockopt(SERVER, SOL_SOCKET, SO_REUSEADDR, 1);
-}
-my $CiscoSTUN_Connected = 0;
-my $CiscoSTUN_ClientSock;
-my $CiscoSTUN_ClientSel;
-my $CiscoSTUN_ClientSock_fh;
-
-#socket(SERVER,);
-
+# To use Raspberry Pi UART you need to disable Bluetooth by editing: /boot/config.txt
+# Add line: dtoverlay=pi3-disable-bt-overlay
 
 
 # Init MMDVM.
@@ -293,7 +336,7 @@ my $MMDVM_RemoteHost; # Buffer for Rx data IP.
 my $MMDVM_Poll_Timer_Interval = 5; # sec.
 my $MMDVM_Sock;
 my $MMDVM_Sel;
-my $MMDVM_Enabled;
+my $MMDVM_Listen_Enable;
 my $MMDVM_Poll_NextTimer = time + $MMDVM_Poll_Timer_Interval;
 my $MMDVM_Connected = 0;
 struct AddrPort => {
@@ -322,9 +365,23 @@ my $P25NX_Connected = 0;
 # Connect to Default Talk Group.
 my $ActiveLinkIndex = 0;
 my $LinkedTalkGroup = 0;
+my $DefaultTalkGroupTimer;
 if ($DefaultTalkGroup > 10) {
 	ChangeLinkedTG($DefaultTalkGroup);
 }
+
+# Raspberry Pi GPIO
+#my $ResetPicPin = RPi::Pin->new(4, "Reset PIC");
+#my $Pin5 = RPi::Pin->new(5, "PTT");
+#my $Pin5 = RPi::Pin->new(6, "COS");
+# This use the BCM pin numbering scheme. 
+# Valid GPIOs are: 2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27.
+# GPIO 2, 3 Aleternate for I2C.
+# GPIO 14, 15 alternate for USART.
+#$ResetPicPin->mode(OUTPUT);
+#$Pin5->write(HIGH);
+#$pin->set_interrupt(EDGE_RISING, 'main::Pin5_Interrupt_Handler');
+
 
 # Misc
 my $Res = 0;
@@ -641,6 +698,7 @@ sub HDLC_Rx{
 					}
 					$Quant->Speech(ord(substr($Message, 12, 11)));
 					$Quant->Raw0x62($Message);
+					$Quant->SuperFrame($Message);
 					$Quant->SourceDev(ord(substr($Message, 23, 1)));
 					Tx_to_Network($Message);
 
@@ -649,6 +707,7 @@ sub HDLC_Rx{
 					if ($HDLC_Verbose) {print "UI 0x63 IMBE Voice part 2.\n";}
 					$Quant->Speech(ord(substr($Message, 3, 11)));
 					$Quant->Raw0x63($Message);
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					$Quant->SourceDev(ord(substr($Message, 14, 1)));
 					Tx_to_Network($Message);
 				}
@@ -712,6 +771,7 @@ sub HDLC_Rx{
 					}
 					$Quant->Priority(ord(substr($Message, 5, 1)));
 					$Quant->Speech(ord(substr($Message, 7, 11)));
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					$Quant->Raw0x64($Message);
  					Tx_to_Network($Message);
 				}
@@ -734,6 +794,7 @@ sub HDLC_Rx{
 					}
 					$Quant->Speech(ord(substr($Message, 7, 11)));
 					$Quant->Raw0x65($Message);
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					Tx_to_Network($Message);
 				}
 				case 0x66 { # Source ID.
@@ -749,24 +810,28 @@ sub HDLC_Rx{
 					}
 					$Quant->Speech(ord(substr($Message, 7, 11)));
 					$Quant->Raw0x66($Message);
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					Tx_to_Network($Message);
 				}
 				case 0x67 { # TBD
 					if ($HDLC_Verbose) {print "UI 0x67 IMBE Voice part 6 + link control.\n";}
 					$Quant->Speech(ord(substr($Message, 7, 11)));
 					$Quant->Raw0x67($Message);
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					Tx_to_Network($Message);
 				}
 				case 0x68 {
 					if ($HDLC_Verbose) {print "UI 0x68 IMBE Voice part 7 + link control.\n";}
 					$Quant->Speech(ord(substr($Message, 7, 11)));
 					$Quant->Raw0x68($Message);
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					Tx_to_Network($Message);
 				}
 				case 0x69 {
 					if ($HDLC_Verbose) {print "UI 0x69 IMBE Voice part 8 + link control.\n";}
 					$Quant->Speech(ord(substr($Message, 7, 11)));
 					$Quant->Raw0x69($Message);
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					Tx_to_Network($Message);
 				}
 				case 0x6A { # Low speed data Byte 1.
@@ -775,6 +840,7 @@ sub HDLC_Rx{
 					$Quant->LSD1(ord(substr($Message, 5, 1)));
 					$Quant->Speech(ord(substr($Message, 6, 11)));
 					$Quant->Raw0x6A($Message);
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					Tx_to_Network($Message);
 				}
 				case 0x6B { # dBm, RSSI, BER.
@@ -825,12 +891,14 @@ sub HDLC_Rx{
 					$Quant->Speech(ord(substr($Message, 12, 11)));
 					$Quant->Raw0x6B($Message);
 					$Quant->SourceDev(ord(substr($Message, 23, 1)));
+					$Quant->SuperFrame($Message);
 					Tx_to_Network($Message);
 				}
 				case 0x6C {
 					if ($HDLC_Verbose) {print "UI 0x6C IMBE Voice part 11.\n";}
 					$Quant->Speech(ord(substr($Message, 3, 11)));
 					$Quant->Raw0x6C($Message);
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					Tx_to_Network($Message);
 				}
 				case 0x6D {
@@ -838,6 +906,7 @@ sub HDLC_Rx{
 					$Quant->EncryptionI(ord(substr($Message, 3, 4)));
 					$Quant->Speech(ord(substr($Message, 7, 11)));
 					$Quant->Raw0x6D($Message);
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					Tx_to_Network($Message);
 				}
 				case 0x6E {
@@ -845,6 +914,7 @@ sub HDLC_Rx{
 					$Quant->EncryptionII(ord(substr($Message, 3,4)));
 					$Quant->Speech(ord(substr($Message, 7, 11)));
 					$Quant->Raw0x6E($Message);
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					Tx_to_Network($Message);
 				}
 				case 0x6F {
@@ -852,6 +922,7 @@ sub HDLC_Rx{
 					$Quant->EncryptionIII(ord(substr($Message, 3,4)));
 					$Quant->Speech(ord(substr($Message, 7, 11)));
 					$Quant->Raw0x6F($Message);
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					Tx_to_Network($Message);
 				}
 				case 0x70 { # Algorithm.
@@ -860,18 +931,21 @@ sub HDLC_Rx{
 					$Quant->KeyID(ord(substr($Message, 4,2)));
 					$Quant->Speech(ord(substr($Message, 7, 11)));
 					$Quant->Raw0x70($Message);
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					Tx_to_Network($Message);
 				}
 				case 0x71 {
 					if ($HDLC_Verbose) {print "UI 0x71 IMBE Voice part 16 + encryption sync.\n";}
 					$Quant->Speech(ord(substr($Message, 7, 11)));
 					$Quant->Raw0x71($Message);
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					Tx_to_Network($Message);
 				}
 				case 0x72 {
 					if ($HDLC_Verbose) {print "UI 0x72 IMBE Voice part 17 + encryption sync.\n";}
 					$Quant->Speech(ord(substr($Message, 7, 11)));
 					$Quant->Raw0x72($Message);
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					Tx_to_Network($Message);
 				}
 				case 0x73 { # Low speed data Byte 2.
@@ -880,6 +954,7 @@ sub HDLC_Rx{
 					$Quant->LSD3(ord(substr($Message, 5, 1)));
 					$Quant->Speech(ord(substr($Message, 6, 11)));
 					$Quant->Raw0x73($Message);
+					$Quant->SuperFrame($Quant->SuperFrame . $Message);
 					Tx_to_Network($Message);
 				}
 				case 0x80 {
@@ -958,8 +1033,8 @@ sub HDLC_Tx{
 	my $MSB;
 	my $LSB;
 	if ($Mode == 0) { #Serial mode.
-		if ($Verbose) {print "HDLC_Tx.\n";}
-		if ($Verbose) {Bytes_2_HexString($Data);}
+		if ($HDLC_Verbose) {print "HDLC_Tx.\n";}
+		if ($HDLC_Verbose > 1) {Bytes_2_HexString($Data);}
 		$CRC = CRC_CCITT_Gen($Data);
 		$MSB = int($CRC / 256);
 		$LSB = $CRC - $MSB * 256;
@@ -967,19 +1042,11 @@ sub HDLC_Tx{
 		# Byte Stuff
 		$Data =~ s/\}/\}\]/g; # 0x7D to 0x7D 0x5D
 		$Data =~ s/\~/\}\^/g; # 0x7E to 0x7D 0x5E
-		if ($HDLC_Verbose == 2) {print "Len(Data) = ", length($Data), "\n";}
+		if ($HDLC_Verbose >= 2) {print "Len(Data) = ", length($Data), "\n";}
 		$SerialPort->write(chr(0x7E) . $Data . chr(0x7E));
-		my $SerialWait = (1 / 19200 * 8) * (length($Data) + 2); # Frame length delay.
+		my $SerialWait = (1 / 9600 * 8) * (length($Data) + 0); # Frame length delay.
 		select(undef, undef, undef, $SerialWait);
-		print "Serial Wait $SerialWait\n";
-#		$SerialPort->baudrate(300);
-#		$SerialPort->restart($SerialPort_Configuration);
-#		$SerialWait = (1 / 19200 * 8) * (length($Data) + 3); # Frame length delay.
-		select(undef, undef, undef, $SerialWait);
-
-
-
-
+		if ($HDLC_Verbose) {print "Serial Wait $SerialWait\n";}
 	}
 	if ($Mode == 1) { # STUN mode.
 		CiscoSTUN_Tx($Data);
@@ -1054,43 +1121,27 @@ sub CRC_CCITT_Gen{
 }
 
 
-##################################################################
-# Cisco STUN #####################################################
-##################################################################
-sub CiscoSTUN_Rx{
-	my ($Buffer) = @_;
-	my $STUN_Header = chr(0x08) . chr(0x31) . chr(0x00) . chr(0x00) . chr(0x00);
-	if (substr($Buffer, 0, 5) eq $STUN_Header) {
-		my $MessageSTUNID = ord(substr($Buffer, 5, 1));
-		HDLC_Rx(substr($Buffer, 7, length($Buffer)));
-	}
-}
-
-sub CiscoSTUN_Tx{
-	my ($Buffer) = @_;
-	if ($CiscoSTUN_Connected) {
-		my $Stun_Header = chr(0x08) . chr(0x31) . chr(0x00) . chr(0x00) . chr(0x00) .
-			chr(2 + length($Buffer)) . chr($P25NX_STUN_ID); #STUN Header.
-		$Buffer = $Stun_Header . $Buffer;
-		$CiscoSTUN_ClientSock->write($Buffer);	
-	}
-}
-
 
 ##################################################################
 # Traffic control ################################################
 ##################################################################
 sub Tx_to_Network{
 	my ($Buffer) = @_;
-	if ($LinkedTalkGroup > 11 and $LinkedTalkGroup < 10100) { # Case MMDVM.
+	$DefaultTalkGroupTimer = time;
+	if ( ($LinkedTalkGroup > 11 and $LinkedTalkGroup < 10100) 
+	    or ($LinkedTalkGroup > 10599 and $LinkedTalkGroup < 65535) ) { # Case MMDVM.
 		HDLC_to_MMDVM($Buffer);
 	}
-#	if ($LinkedTalkGroup > 10099 and $LinkedTalkGroup < 10600) { # case P25NX.
-#	HDLC_to_P25NX($Buffer);
-#	}
-	#if ($TalkGroup > 10599 and $TalkGroup < 65535) { # case MMDVM
-	if ($LinkedTalkGroup >10099 and $LinkedTalkGroup <65535) { # case MMDVM.
-		HDLC_to_MMDVM($Buffer);
+	if ($LinkedTalkGroup >= 10100 and $LinkedTalkGroup < 10600) { # case P25NX.
+		if ($Cisco_DMVPN_Enabled) {
+			HDLC_to_P25NX($Buffer);
+		} else {
+			if ($P25NXv3_Enabled) {
+				
+			} else {
+				HDLC_to_MMDVM($Buffer);
+			}
+		}
 	}
 }
 
@@ -1133,6 +1184,7 @@ sub HDLC_to_P25NX{
 	my $Stun_Header = chr(0x08) . chr(0x31) . chr(0x00) . chr(0x00) . chr(0x00) .
 		chr(2 + length($Buffer)) . chr($P25NX_STUN_ID); #STUN Header.
 	$Buffer = $Stun_Header . $Buffer;
+	#print "HDLC_to_P25NX.\n";
 	P25NX_Tx($Buffer);
 }
 
@@ -1185,12 +1237,12 @@ sub P25NX_to_HDLC{ # P25NX packet contains Cisco STUN and Quantar packet.
 
 sub ChangeLinkedTG{
 	my ($TalkGroup) = @_;
-	#print "Quant->AstroTalkGroup " . $Quant->AstroTalkGroup . "\n";
-	#print "Change Linked TG from " . $LinkedTalkGroup . " to " . $TalkGroup . ".\n";
-
 	if ($LinkedTalkGroup == $TalkGroup) {
 		return;
 	}
+	print "Quant->AstroTalkGroup " . $Quant->AstroTalkGroup . "\n";
+	print "Change Linked TG from " . $LinkedTalkGroup . " to " . $TalkGroup . ".\n";
+
 	# Disconnect from current network.
 	if ($MMDVM_Connected) {
 		WriteUnlink();
@@ -1201,7 +1253,9 @@ sub ChangeLinkedTG{
 		P25NX_Disconnect($LinkedTalkGroup);
 	}
 	# Now connect to a network.
-	if ($TalkGroup > 10 and $TalkGroup < 65535) {
+	if ( ($TalkGroup > 10 and $TalkGroup < 10100)
+	    or ($TalkGroup >= 10600 and $TalkGroup < 65535)
+	    or ($Cisco_DMVPN_Enabled == 0 and ($TalkGroup >= 10100 and $TalkGroup < 10600)) ) { # MMDVM.
 		# Search for TG data.
 		for (my $Index = 0; $Index < $NumberOfReflectors; $Index++) { 
 			if ($Links[1] == $TalkGroup) {
@@ -1226,37 +1280,38 @@ sub ChangeLinkedTG{
 			PeerPort => $MMDVM_Addr->Port
 		) or die "Can not Bind MMDVM : $@\n";
 		$MMDVM_Sel = IO::Select->new($MMDVM_Sock);
-		$MMDVM_Enabled = 1;
+		$MMDVM_Listen_Enable = 1;
 		WritePoll();
 		WritePoll();
 		WritePoll();
 	}
-#	if ($TalkGroup > 10099 and $TalkGroup < 10600) { # case P25NX
-#		my $MulticastAddress = makeMulticastAddress($TalkGroup);
-#		if ($Verbose) {print "P25NX Connecting to " . $TalkGroup .
-#			" Multicast Addr. " . $MulticastAddress . "\n";
-#		}
-#
-#		$P25NX_Sock[0] = IO::Socket::Multicast->new(
-#			LocalHost => $MulticastAddress,
-#			LocalPort => $P25NX_LocalPort,
-#			Proto => 'udp',
-#			Blocking => 0,
-#			Broadcast => 1,
-#			ReuseAddr => 1,
-#			PeerPort => $P25NX_RemotePort
-#			)
-#			or die "Can not create Multicast : $@\n";
-#		$P25NX_Sel[0] = IO::Select->new($P25NX_Sock[0]);
-#		$P25NX_Sock[0]->mcast_add($MulticastAddress);
-#		$P25NX_Sock[0]->mcast_ttl(10);
-#		$P25NX_Sock[0]->mcast_loopback(0);
-#		$P25NX_Connected = 1;
-#	}
-#
+	if ($Cisco_DMVPN_Enabled and $TalkGroup >= 10100 and $TalkGroup < 10600) { # case P25NX
+		my $MulticastAddress = makeMulticastAddress($TalkGroup);
+		if ($Verbose) {print "P25NX Connecting to " . $TalkGroup .
+			" Multicast Addr. " . $MulticastAddress . "\n";
+		}
+			$P25NX_Sock = IO::Socket::Multicast->new(
+			LocalHost => $MulticastAddress,
+			LocalPort => $P25NX_LocalPort,
+			Proto => 'udp',
+			Blocking => 0,
+			Broadcast => 1,
+			ReuseAddr => 1,
+			PeerPort => $P25NX_RemotePort
+			)
+			or die "Can not create Multicast : $@\n";
+		$P25NX_Sel = IO::Select->new($P25NX_Sock);
+		$P25NX_Sock->mcast_add($MulticastAddress);
+		$P25NX_Sock->mcast_ttl(10);
+		$P25NX_Sock->mcast_loopback(0);
+		$P25NX_Connected = 1;	
+	}
 
 
+	# Finalize link.
 	$LinkedTalkGroup = $TalkGroup;
+	$DefaultTalkGroupTimer = time;
+	if ($UseVoicePrompts) {SaySomething($TalkGroup);}
 	print "System Linked to TG " . $LinkedTalkGroup . "\n";
 }
 
@@ -1325,7 +1380,7 @@ sub MMDVM_Rx{ # Only HDLC UI Frame. Start on Quantar v.24 Byte 3.
 		case 0xF1 { # Ref. Disconnect Ack.
 			if ($MMDVM_Verbose) {print "MMDVM_Rx Ref. Disconnect Ack Rx.\n";}
 			$MMDVM_Connected = 0;
-			$MMDVM_Enabled = 0;
+			$MMDVM_Listen_Enable = 0;
 		}
 		case 0xF2 { # Start of Tx.
 			if ($MMDVM_Verbose) {print "MMDVM_Rx 0xF2.\n";}
@@ -1379,12 +1434,15 @@ sub P25NX_Rx{
 	my ($Buffer) = @_;
 	if (length($Buffer) < 1) {return;}
 	#if ($Verbose) {print "PNX_Rx\n";} if ($Verbose) {print "PNX_Rx HexData = " . StrToHex($Buffer) . "\n";}
-	MMDVM_Tx(substr($Buffer, 9, length($Buffer)));
+	#MMDVM_Tx(substr($Buffer, 9, length($Buffer)));
+	P25NX_to_HDLC($Buffer);
+
 }
 
 sub P25NX_Tx{ # This function expect to Rx a formed  Cisco STUN Packet.
 	my ($Buffer) = @_;
-	# Tx to the Network if ($Verbose) {print "P25NX_Tx Message " . StrToHex($Buffer) . "\n";}
+	# Tx to the Network.
+	if ($P25NX_Verbose >= 2) {print "P25NX_Tx Message " . StrToHex($Buffer) . "\n";}
 	my $MulticastAddress = makeMulticastAddress($LinkedTalkGroup);
 	my $P25NX_Tx_Sock = IO::Socket::Multicast->new(
 		LocalHost => $MulticastAddress,
@@ -1400,9 +1458,10 @@ sub P25NX_Tx{ # This function expect to Rx a formed  Cisco STUN Packet.
 	$P25NX_Tx_Sock->mcast_loopback(0);
 	$P25NX_Tx_Sock->mcast_send($Buffer, $MulticastAddress . ":" . $P25NX_RemotePort);
 	$P25NX_Tx_Sock->close;
-	print "P25NX_Tx TG " . $LinkedTalkGroup .
-		" IP Mcast " . $MulticastAddress . "\n";
-	#if ($P25NX_Verbose) {print "P25NX_Tx Done.\n";}
+	if ($P25NX_Verbose) {
+		print "P25NX_Tx TG " . $LinkedTalkGroup . " IP Mcast " . $MulticastAddress . "\n";
+	}
+	if ($P25NX_Verbose) {print "P25NX_Tx Done.\n";}
 }
 
 #################################################################################
@@ -1425,31 +1484,6 @@ sub MainLoop{
 		if ($Mode == 0) {
 			Read_Serial();
 		}
-		# Cisco STUN.
-		if ($Mode == 1) {
-			if ($CiscoSTUN_Connected == 0 and $CiscoSTUN_ClientSock = $CiscoSTUN_Sock->accept()) {
-				$CiscoSTUN_ClientAddress = $CiscoSTUN_ClientSock->peerhost();
-				$CiscoSTUN_ClientPort = $CiscoSTUN_ClientSock->peerport();
-				$CiscoSTUN_ClientSel = IO::Select->new($CiscoSTUN_ClientSock);
-				print "Connection from $CiscoSTUN_ClientAddress:$CiscoSTUN_ClientPort\n";
-				$CiscoSTUN_Connected = 1;
-			}
-		}
-		if ($CiscoSTUN_Connected) {
-#			print "blabla\n";
-			for $CiscoSTUN_ClientSock_fh ($CiscoSTUN_ClientSel->can_read(0.01)) {
-				$CiscoSTUN_ClientAddress = $CiscoSTUN_ClientSock_fh->recv(my $CiscoSTUN_Buffer, $MaxLen);
-				CiscoSTUN_Rx($CiscoSTUN_Buffer);
-				if (length($CiscoSTUN_Buffer) > 0) {
-					CiscoSTUN_Rx($CiscoSTUN_Buffer);
-					print "STUN Len(" . length($CiscoSTUN_Buffer) .")\n";
-					if ($Verbose) {print $hour . ":" . $min . ":" . $sec .
-						" " . $CiscoSTUN_ClientAddress .
-						" CiscoSTUN_Client Data len(" . length($CiscoSTUN_Buffer) . ")\n";
-					}
-				}
-			}
-		}
 		# MMDVM WritePoll becon.
 		my $MMDVM_Timeout = $MMDVM_Poll_NextTimer - time;
 		#if ($Verbose) {print "Countdown to send WritePoll = " . $MMDVM_Timeout . "\n";}
@@ -1462,7 +1496,7 @@ sub MainLoop{
 			$MMDVM_Poll_NextTimer = $MMDVM_Poll_Timer_Interval + time;
 		}
 		# MMDVM Receiver.
-		if ($MMDVM_Enabled) {
+		if ($MMDVM_Listen_Enable) {
 			for my $MMDVM_fh ($MMDVM_Sel->can_read(0.001)) {
 				$MMDVM_RemoteHost = $MMDVM_fh->recv(my $MMDVM_Buffer, $MaxLen);
 				$MMDVM_RemoteHost = $MMDVM_fh->peerhost;
@@ -1491,16 +1525,25 @@ sub MainLoop{
 				}	
 			}
 		}
+		# Default Talk Group timeout.
+		if ($LinkedTalkGroup != $DefaultTalkGroup 
+			and $DefaultTalkGroupTimeout > 0 
+			and $DefaultTalkGroupTimer + $DefaultTalkGroupTimeout * 60  <=  time) {
+			print "Default Talk Group Timeout.\n";
+			$DefaultTalkGroupTimer = time;
+			ChangeLinkedTG($DefaultTalkGroup);
+		}
+
 		# Voice Announce.
-		if ($Mode == 0) {
-		$TickCount = sprintf("%d", $SerialPort->get_tick_count());
-		if ($TickCount > $FutureTickCount){
-			if ($UseVoicePrompts) {SaySomething(0);}
-			$FutureTickCount = $TickCount + 15000;
-		}
-#		my $FutureTick = sprintf("%d", $SerialPort->get_tick_count()) + 1000;
-#		print "TickCount = " . $SerialPort->get_tick_count() . " <-> " . $FutureTick . "\n";
-		}
+#		if ($Mode == 0) {
+#			$TickCount = sprintf("%d", $SerialPort->get_tick_count());
+#			if ($TickCount > $FutureTickCount){
+#				if ($UseVoicePrompts) {SaySomething(0);}
+#				$FutureTickCount = $TickCount + 10000;
+#			}
+			#my $FutureTick = sprintf("%d", $SerialPort->get_tick_count()) + 1000;
+			#print "TickCount = " . $SerialPort->get_tick_count() . " <-> " . $FutureTick . "\n";
+#		}
 	}
 }
 
@@ -1512,40 +1555,74 @@ sub SaySomething{
 	$HDLC_TxTraffic = 1;
 	switch ($ThingToSay) {
 		case 0x00 {
-			@Speech = @SystemStart;
+			@Speech = @Speech_SystemStart;
 		}
 		case 0x01 {
-			@Speech = @DefaultSpeech;
+			@Speech = @Speech_DefaultRevert;
 		}
 		case 0x02 {
-		
+			@Speech = @HDLC_TestPattern;
 		}
-		case 0x03 {
-		
+		case 10100 {
+			@Speech = @Speech_WW;
 		}
-		case 0x04 {
-		
+		case 10101 {
+			@Speech = @Speech_WWTac1;
 		}
-		case 0x05 {
-		
+		case 10102 {
+			@Speech = @Speech_WWTac2;
 		}
-		case 0x06 {
-		
+		case 10103 {
+			@Speech = @Speech_WWTac3;
 		}
-		case 0x07 {
-		
+		case 10200 {
+			@Speech = @Speech_NA;
 		}
-		case 0x08 {
-		
+		case 10201 {
+			@Speech = @Speech_NATac1;
 		}
-		case 0x09 {
-		
+		case 10202 {
+			@Speech = @Speech_NATac2;
+		}
+		case 10203 {
+			@Speech = @Speech_WWTac3;
+		}
+		case 10300 {
+			@Speech = @Speech_Europe;
+		}
+		case 10301 {
+			@Speech = @Speech_EuTac1;
+		}
+		case 10302 {
+			@Speech = @Speech_EuTac2;
+		}
+		case 10303 {
+			@Speech = @Speech_EuTac3;
+		}
+		case 10310 {
+			@Speech = @Speech_France;
+		}
+		case 10320 {
+			@Speech = @Speech_Germany;
+		}
+		case 10400 {
+			@Speech = @Speech_Pacific;
+		}
+		case 10401 {
+			@Speech = @Speech_PacTac1;
+		}
+		case 10402 {
+			@Speech = @Speech_PacTac2;
+		}
+		case 10403 {
+			@Speech = @Speech_PacTac3;
 		}
 	}
 	for (my $x = 0; $x < scalar(@Speech); $x++) {
 		$Message = HexString_2_Bytes($Speech[$x]);
-		#select(undef, undef, undef, 0.023); # Sleep 10mS.
 		HDLC_Tx($Message);
+		my $SerialWait = (1 / 9600 * 8) * (1); # Frame length delay.
+		select(undef, undef, undef, $SerialWait);
 	}
 	$HDLC_TxTraffic = 0;
 	print "Value = $Value\n";
@@ -1553,5 +1630,8 @@ sub SaySomething{
 }
 
 
+sub Pin5_Interrupt_Handler {
+    print "Pin5 Interrupt Handler.\n";
+}
 
 
