@@ -1,8 +1,8 @@
 ;************************************************************************
 ;																		*
-;	Filename:	    HDLC S2A A2S v45.asm								*
-;	Date:			Nov 14, 2019.										*
-;	File Version:	4.5													*
+;	Filename:	    HDLC S2A A2S v46.asm								*
+;	Date:			Nov 21, 2019.										*
+;	File Version:	4.6													*
 ;																		*
 ;	Author:		Juan Carlos Pérez De Castro (Wodie)	KM4NNO / XE1F		*
 ;	Project advisor:	Bryan Fiels W9CR								*
@@ -23,6 +23,7 @@
 ;	CTS Deprecated.														*
 ;	A.S Memory extended to 120 Bytes.									*
 ;	Hardware Reset will need a Not gate chip on PCB.					*
+;	Testing ofset interruption for Async.								*
 ;																		*
 ;	***	Missing:														*
 ;	2nd Bug patch deeper test on A>S (RS-232 to HDLC), seems to work.	*
@@ -388,15 +389,26 @@
     GOTO	INTEND		; No, exit int.
 
 HDLCRx:	BCF	INTCON,INTF	; Clear int RB0 flag.
+	BTFSS	RxClock
+	GOTO	HDLC_Rx_Int
+	BTFSC	RxClock
+	GOTO	HDLC_Tx_Int
+
+HDLC_Rx_Int:
 	CALL	HDLC_Rx		; Read RxPin from Quantar and save it on Buffer.
-	MOVLW	0x17		; Delay to reduce bit errors IDK, but it make it work.
-	DECF	W,W			; ///
-	BTFSC	ZERO		; //
-	GOTO	$-2			; /
+	BANK1
+	BSF	OPTION_REG,INTEDG	; Set RB0 Edge trigger to High.
+	BANK0
+    GOTO	INTEND
+
+HDLC_Tx_Int:
 	BTFSC	TxBitRAM	; If Data is a 1 set output.
 	BSF		TxPin		; / Make it 1.
 	BTFSS	TxBitRAM	; If Data is a 0 clear output.
 	BCF		TxPin		; / Make it 0.
+	BANK1
+	BCF	OPTION_REG,INTEDG	; Set RB0 Edge trigger to Low.
+	BANK0
 	CALL	HDLC_Tx		; Prepare next TxBit (Pre-load).
     GOTO	INTEND
 
