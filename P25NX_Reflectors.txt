@@ -1,5 +1,8 @@
 Setting P25NX v2 reflectors on MMDVM
 
+If you have other links with the same Talk Group numbers, you will need to comment them to avoid linking conflicts on your MMDVM. 
+
+
 # File 1
 # Point your browser to:
 pi-star/admin/expert/ssh_access.php
