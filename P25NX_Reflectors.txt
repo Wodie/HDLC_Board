@@ -1,0 +1,37 @@
+Setting P25NX v2 reflectors on MMDVM
+
+# File 1
+# Point your browser to:
+pi-star/admin/expert/ssh_access.php
+# Type:
+sudo su
+cd /root
+rpi-rw
+nano P25Hosts.txt
+# Add at the end of the file (use Tabs, no spaces):
+
+10100   44.98.249.177	41000
+10101	44.98.249.177	41001
+10102	44.98.249.177	41002
+10103	44.98.249.177	41003
+10200	44.98.249.177	41004
+10201	44.98.249.177	41005
+10202	44.98.249.177	41006
+10203	44.98.249.177	41007
+10300	44.98.249.177	41008
+10301	44.98.249.177	41009
+10302	stn5995.ip.irlp.net	41002
+10303	stn5995.ip.irlp.net	41003
+10400	44.98.249.177	41010
+10401	stn5995.ip.irlp.net	41004
+10402	stn5995.ip.irlp.net	41005
+10403	stn5995.ip.irlp.net	41006
+
+# Ctrl o, Enter
+# Ctrl x
+# Make a pi-star Update
+
+
+
+# File 2, make the same changes that you did on File 1.
+sudo nano /usr/local/etc/P25HostsLocal.txt
