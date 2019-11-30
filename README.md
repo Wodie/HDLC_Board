@@ -1,6 +1,6 @@
-# Quantar_v.24_to_RS232
+# Quantar_P25Link
 
-Importatnt: Project is under development.
+Importatnt: this is a work in progress project, so features might not work on every update.
 
 Quantar v.24 Sync to/from Async card.
 
@@ -12,7 +12,7 @@ Buffer from Sync to Async is unlimited.
 Buffer from Async to Sync is limited to 120/112 bytes, but need testing.
 
 
-To use the QuantarNetwork program copy QuantarNetwork.pl, congfig.ini, and Speech.ini to a folder, update the config.ini file with your callsign and IP address, etc and install the required Perl libraries using the follownig commands:
+To use the QuantarNet program copy QuantarNet.pl, congfig.ini, and Speech.ini to a folder, update the config.ini file with your callsign and IP address, etc and install the required Perl libraries using the follownig commands:
 
 sudo cpan
 
@@ -31,11 +31,11 @@ install Device::SerialPort
 exit
  
 To make an exe file:
-sudo chmod +x QuantarNetwork.pl
+sudo chmod +x QuantarNet.pl
 
 sudo cpan -i PAR::Packer
 
-pp -o QuantarNetwork.exe QuantarNetwork.pl
+pp -o QuantarNet.exe QuantarNet.pl
 
 
 This software and hardware is licenced under the GPL v3. If you are using it, please let me know, I will be glad to know it.
