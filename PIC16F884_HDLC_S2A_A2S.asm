@@ -1,8 +1,8 @@
 ;************************************************************************
 ;																		*
 ;	Filename:	    PIC16F884_HDLC_S2A_A2S_v46.asm						*
-;	Date:			Nov 27, 2019.										*
-;	File Version:	4.6													*
+;	Date:			Nov 30, 2019.										*
+;	File Version:	4.6.1												*
 ;																		*
 ;	Author:		Juan Carlos Pérez De Castro (Wodie)	KM4NNO / XE1F		*
 ;	Project advisor:	Bryan Fiels W9CR								*
@@ -373,28 +373,26 @@
 	GOTO	AUSARTRx	; Yes, Handle it.
     GOTO	INTEND		; No, exit int.
 
-HDLCRx:	BCF	INTCON,INTF	; Clear int RB0 flag.
-	BTFSS	RxClock
-	GOTO	HDLC_Rx_Int
-	BTFSC	RxClock
-	GOTO	HDLC_Tx_Int
-
-HDLC_Rx_Int:
-	CALL	HDLC_Rx		; Read RxPin from Quantar and save it on Buffer.
-	BANK1
-	BSF	OPTION_REG,INTEDG	; Set RB0 Edge trigger to High.
-	BANK0
-    GOTO	INTEND
-
-HDLC_Tx_Int:
-	BTFSC	TxBitRAM	; If Data is a 1 set output.
+HDLCRx:	
+	BTFSC	RxClock		; If Clock:
+	GOTO	HDLC_Rx_Int	; Clock changed to High.
+	BTFSC	TxBitRAM	; Clock changed to Low. If Data is a 1 set output.
 	BSF		TxPin		; / Make it 1.
 	BTFSS	TxBitRAM	; If Data is a 0 clear output.
 	BCF		TxPin		; / Make it 0.
+	BCF	INTCON,INTF	; Clear int RB0 flag.
+	BANK1
+	BSF	OPTION_REG,INTEDG	; Set RB0 Edge trigger to High.
+	BANK0
+	CALL	HDLC_Tx		; Prepare next TxBit (Pre-load).
+    GOTO	INTEND
+
+HDLC_Rx_Int:
+	BCF	INTCON,INTF	; Clear int RB0 flag.
+	CALL	HDLC_Rx		; Clock changed to High, read RxPin from Quantar and save it on Buffer.
 	BANK1
 	BCF	OPTION_REG,INTEDG	; Set RB0 Edge trigger to Low.
 	BANK0
-	CALL	HDLC_Tx		; Prepare next TxBit (Pre-load).
     GOTO	INTEND
 
 AUSARTRx:
