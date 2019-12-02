@@ -13,15 +13,17 @@ use IO::Socket;
 use IO::Socket::INET;
 use IO::Socket::Multicast;
 use Class::Struct;
+use Time::HiRes qw(nanosleep);
 #use RPi::Pin;
 #use RPi::Const qw(:all);
 
 
 # About Message.
-print "P25NX v3.0.0\n";
-print "Released: November 21, 2019. Created October 17, 2019.\n";
-print "Created by: Juan Carlos Pérez De Castro (Wodie) KM4NNO / XE1F\n";
-print "and Bryan Fields W9CR.\n";
+print "QuantarNet v3.0.0\n";
+print "Released: December 01, 2019. Created October 17, 2019.\n";
+print "Created by:\n";
+print "Juan Carlos Pérez De Castro (Wodie) KM4NNO / XE1F\n";
+print "Bryan Fields W9CR.\n";
 print "www.wodielite.com\n";
 print "wodielite at mac.com\n\n";
 
@@ -33,14 +35,17 @@ my $Mode = $cfg->val('Settings', 'Mode'); #0 = v.24, no other modes coded at the
 my $LocalHost = $cfg->val('Settings', 'Local_Host');
 my $P25NX_STUN_ID = sprintf("%x", hex($cfg->val('Settings', 'STUN_ID')));
 my $P25NX_Enabled = $cfg->val('Settings', 'P25NX_Enabled');
-my $P25NXv3_Enabled = $cfg->val('Settings', 'P25NXv3_Enabled');
+my $RTRT_Enabled = $cfg->val('Settings', 'RTRT_Enabled');
 my $Cisco_DMVPN_Enabled = $cfg->val('Settings', 'Cisco_DMVPN_Enabled'); # Need Cisco DMVPN.
+my $P25Link_Enabled = $cfg->val('Settings', 'P25Link_Enabled');
 my $MMDVM_Enabled = $cfg->val('Settings', 'MMDVM_Enabled');
 print "  Mode = $Mode\n";
+print "  Local Host = $LocalHost\n";
 print "  Stun ID = 0x$P25NX_STUN_ID\n";
 print "  P25NX Enabled = $P25NX_Enabled\n";
-print "  P25NX v3 Enabled = $P25NXv3_Enabled\n";
+print "  RT/RT ENabled = $RTRT_Enabled\n";
 print "  Cisco DMVPN Enabled = $Cisco_DMVPN_Enabled\n";
+print "  P25Link Enabled = $P25Link_Enabled\n";
 print "  MMDVM Enabled = $MMDVM_Enabled\n";
 # Preferences
 my $Language = $cfg->val('Preferences', 'Language');
@@ -73,46 +78,37 @@ print "  Repeater RadioID = $RadioID\n";
 print "  Listing available Reflectors:\n";
 my @Reflectors = $cfg->val('Reflectors', 'Ref');
 for (my $x = 0; $x < scalar(@Reflectors); $x++) {
-	print "    Ref " . $x . " " . $Reflectors[$x] ."\n";
+#	print "    Ref " . $x . " " . $Reflectors[$x] ."\n";
 }
 
 print "  Reflectors Database/MMDVM talk groups.\n"; my @Links = (
 	#[P25NX TG, MMDVM TG, 'Ref. Address', Port],
+	[334, 334, '192.168.0.100', 41001], # Ref B 1
 	[420, 420, 'p25.evsuperfreqs.com', 41000],
 	[530, 530, 'zldigitalreflectors.hopto.org', 41000],
 	[707, 707, '707p25.kd0ioe.com', 41000],
 	[2140, 2140, '94.177.235.81', 41000],
 	[2503, 2503, 'p25.r1ik.ru', 41000],
 	[3023, 3023, 'ontxlink.hopto.org', 41000],
+	[3345, 3345, '192.168.0.100', 41000], # Ref B 0
+	[4095, 4095, '192.168.0.100', 41010], # Ref B 10
 	[5057, 5057, '45.248.50.37', 41000],
 	[6395, 6395, 'p25ref.nf9k.net', 41000],
-	# New P25NX Reflector:
-	[10100, 10100, '0.0.0.0', 41000],
-	[10101, 10101, '0.0.0.0', 41001],
-	[10102, 10102, '0.0.0.0', 41002],
-	[10103, 10103, '0.0.0.0', 41003],
-	[10200, 10200, '0.0.0.0', 41004],
-	[10201, 10201, '0.0.0.0', 41005],
-	[10202, 10202, '0.0.0.0', 41006],
-	[10203, 10203, '192.168.0.100', 41003],
-	[10300, 10300, '0.0.0.0', 41008],
-	[10301, 10301, '0.0.0.0', 41009],
-	[10302, 10302, '0.0.0.0', 41010],
-	[10303, 10303, '0.0.0.0', 41011],
-#	[10310, 10310, '0.0.0.0', 41000],
-#	[10320, 10320, '0.0.0.0', 41000],
-	[10400, 10400, '0.0.0.0', 41012],
-	[10401, 10401, '0.0.0.0', 41013],
-	[10402, 10402, '0.0.0.0', 41014],
-	[10403, 10403, '0.0.0.0', 41015],
-	# Isolated MMDVM reflectors:
-#	[10100, 10100, 'm1geo.com', 41000],
-#	[10200, 10200, 'dvswitch.org', 41000],
-#	[10201, 10201, 'dvswitch.org, 41010],
-#	[10300, 10300, '176.9.1.168', 41000],
-#	[10301, 10301, 'ea5gvk.duckdns.org', 41000],
-#	[10310, 10310, '44.148.230.100', 41000],
-#	[10320, 10320, '78.47..206..12', 41000],
+	# P25NX and MMDVM reflectors:
+	[10100, 10100, 'm1geo.com', 41000],
+	[10101, 10101, '44.98.249.177', 41001], # Tpa 1
+	[10102, 10102, '44.98.249.177', 41002], # Tpa 2
+	[10103, 10103, '44.98.249.177', 41003], # Tpa 3
+	[10200, 10200, 'dvswitch.org', 41000],
+	[10201, 10201, 'dvswitch.org', 41010],
+	[10202, 10202, '44.98.249.177', 41004], # Tpa 4
+	[10203, 10203, '44.98.249.177', 41005], # Tpa 5
+	[10300, 10300, '176.9.1.168', 41000],
+	[10301, 10301, 'ea5gvk.duckdns.org', 41000],
+	[10302, 10302, '44.98.249.177', 41006], # Tpa 6
+	[10303, 10303, '44.98.249.177', 41007], # Tpa 7
+	[10310, 10310, '44.148.230.100', 41000], # France
+	[10320, 10320, '78.47..206..12', 41000], # Germany
 #	[10328, 10328, '5.9.59.26', 41000],
 #	[10342, 10342, 'P25R.northwestdigital.club', 41000],
 #	[10350, 10350, 'warc.ddns.net', 41000],
@@ -175,13 +171,17 @@ my @Speech_Pacific = $SpeechFile->val('speech_Pacific', 'byte');
 my @Speech_PacTac1 = $SpeechFile->val('speech_PacTac1', 'byte');
 my @Speech_PacTac2 = $SpeechFile->val('speech_PacTac2', 'byte');
 my @Speech_PacTac3 = $SpeechFile->val('speech_PacTac3', 'byte');
+my $Pending_VA = 0;
+my $VA_Message = 0;
 print "\n";
 
 
-# Quantar HDLC Init
+# Quantar HDLC Init.
 print "Init Quantar HDLC.\n";
 struct Quant => {
 	FrameType => '$',
+	LocalRx => '$',
+	LocalRx_Time => '$',
 	IsDigitalVoice => '$',
 	IsPage => '$',
 	dBm => '$',
@@ -236,53 +236,55 @@ struct Quant => {
 	SuperFrame => '$',
 };
 my $Quant = Quant->new();
+$Quant->LocalRx(0);
 $Quant->AstroTalkGroup(0x00);
 #
 # ICW (Infrastructure Control Word).
 # Byte 1 address.
 # Bte 2 frame type.
-my $RR = 0x41;
-my $UI = 0x03;
-my $SABM = 0x3F;
-my $XID = 0xBF;
+my $C_RR = 0x41;
+my $C_UI = 0x03;
+my $C_SABM = 0x3F;
+my $C_XID = 0xBF;
 # Byte 3.
 # Byte 4.
 # Byte 5 RT mode flag.
-my $RTRT_Enabled = 0x02;
-my $RTRT_Disabled = 0x04;
-my $RTRT_DCRMode = 0x05;
+my $C_RTRT_Enabled = 0x02;
+my $C_RTRT_Disabled = 0x04;
+my $C_RTRT_DCRMode = 0x05;
 # Byte 6 Op Code Start/Stop flag.
-my $ChangeChannel = 0x06;
-my $StartTx = 0x0C;
-my $EndTx = 0x25;
+my $C_ChangeChannel = 0x06;
+my $C_StartTx = 0x0C;
+my $C_EndTx = 0x25;
 # Byte 7 OpArg, type flag.
-my $AVoice = 0x00;
-my $TMS_Data_Payload = 0x06;
-my $DVoice = 0x0B;
-my $TMS_Data = 0x0C;
-my $From_Comparator_Start = 0x0D;
-my $From_Comparator_Stop = 0x0E;
-my $Page = 0x0F;
+my $C_AVoice = 0x00;
+my $C_TMS_Data_Payload = 0x06;
+my $C_DVoice = 0x0B;
+my $C_TMS_Data = 0x0C;
+my $C_From_Comparator_Start = 0x0D;
+my $C_From_Comparator_Stop = 0x0E;
+my $C_Page = 0x0F;
 # Byte 8 ICW flag.
-my $DIU3000 = 0x00;
-my $Quantar = 0xC2;
-my $QuantarAlt = 0x1B;
+my $C_DIU3000 = 0x00;
+my $C_Quantar = 0xC2;
+my $C_QuantarAlt = 0x1B;
 # Byte 9 LDU1 RSSI.
 # Byte 10 1A flag.
-my $RSSI_Is_Valid = 0x1A;
+my $C_RSSI_Is_Valid = 0x1A;
 # Byte 11 LDU1 RSSI.
 #
 # Byte 13 Page.
-my $Normal_Page = 0x9F;
-my $Emergency_Page = 0xA7;
+my $C_Normal_Page = 0x9F;
+my $C_Emergency_Page = 0xA7;
+#
+my $C_AllCallTG = 0xFFFF;
+#
 #
 my $IsTGData = 0;
-my $Implicit_MFID = 0;
-my $Explicit_MFID = 1;
+my $C_Implicit_MFID = 0;
+my $C_Explicit_MFID = 1;
 my $Is_TG_Data = 0;
 my $SuperframeCounter = 0;
-#
-my $AllCallTG = 0xFFFF;
 #
 #
 my $RR_NextTimer = 0;
@@ -291,16 +293,13 @@ my $RR_TimerInterval = 5; # Seconds.
 my $HDLC_Handshake = 0;
 my $SABM_Counter = 0;
 my $Message = "";
-my $RTRT_E = 0x02;
 my $HDLC_Buffer = "";
 my $RR_Timer = 0;
 #
-my $RTRT_Enabled_Value = 1;
-my $HDLC_Enabled = 1;
 my $Tx_Started = 0;
 my $SuperFrameCounter = 0;
 my $HDLC_TxTraffic = 0;
-
+my $LocalRx_Time;
 # Init Serial Port for HDLC.
 my $TickCount;
 my $FutureTickCount;
@@ -318,10 +317,10 @@ if ($Mode == 0) {
 	$SerialPort->datatype('raw');
 	$SerialPort->debug(1);
 	$SerialPort->write_settings || undef $SerialPort;
-	$SerialPort->save($SerialPort_Configuration);
+	#$SerialPort->save($SerialPort_Configuration);
 	$TickCount = sprintf("%d", $SerialPort->get_tick_count());
 	$FutureTickCount = $TickCount + 5000;
-	print "TickCount = $TickCount\n\n";
+	print "  TickCount = $TickCount\n\n";
 }
 # To use Raspberry Pi UART you need to disable Bluetooth by editing: /boot/config.txt
 # Add line: dtoverlay=pi3-disable-bt-overlay
@@ -349,7 +348,7 @@ $MMDVM_Addr->Port(41000);
 my $MaxLen =1024; # Max Socket Buffer length.
 
 
-# Init P25NX
+# Init P25NX.
 print "Init_P25NX.\n";
 #my $P25NX_STUN_ID = 0x63;
 my $P25NX_InfoPayload = 0xFD; # Can be 0xFD or 0x07
@@ -361,7 +360,8 @@ my $P25NX_Sock;
 my $P25NX_Sel;
 my $P25NX_Connected = 0;
 
-
+# Init P25Link.
+my $P25Link_Connected = 0;
 # Connect to Default Talk Group.
 my $ActiveLinkIndex = 0;
 my $LinkedTalkGroup = 0;
@@ -369,6 +369,10 @@ my $DefaultTalkGroupTimer;
 if ($DefaultTalkGroup > 10) {
 	ChangeLinkedTG($DefaultTalkGroup);
 }
+# Prepare Startu VA Message.
+$VA_Message = 0; # Welcome to the P25NX.
+$Pending_VA = 1;
+
 
 # Raspberry Pi GPIO
 #my $ResetPicPin = RPi::Pin->new(4, "Reset PIC");
@@ -469,7 +473,7 @@ sub HDLC_Rx{
 
 		if (substr($Buffer, 0, 7) eq "!RESET!") {
 			my $BoardID = ord(substr($Buffer, 7, 1));
-			print "*** Warning ***  HDLC_Rx Board $BoardID made a Reset!\n";
+			print "*** Warning ***   HDLC_Rx Board $BoardID made a Reset!\n";
 			return;
 		}
 
@@ -483,8 +487,8 @@ sub HDLC_Rx{
 	
 		# CRC CCITT.
 		if (length($Buffer) < 2) {
-			print "*** Warning***   HDLC_Rx Warning Buffer < 2 Bytes.\n";
-			return 0;
+			print "*** Warning ***   HDLC_Rx Warning Buffer < 2 Bytes.\n";
+			return;
 		}
 		$Message = substr($Buffer, 0, length($Buffer) - 2);
 		#print "Len(Message) = ", length($Message), "\n";
@@ -492,7 +496,7 @@ sub HDLC_Rx{
 		#print "CRC_Rx  = $CRC_Rx\n";
 		if (length($Message) == 0) {
 			print "*** Warning ***   HDLC_Rx Message is Null.\n";
-			return 0;
+			return;
 		}
 		my $CRC_Gen = CRC_CCITT_Gen($Message);
 		#print "CRC_Gen = $CRC_Gen\n";
@@ -501,15 +505,16 @@ sub HDLC_Rx{
 		#print "Calc CRC16 in hex: ", unpack('H*', pack('S', $Message)), "\n";
 		if ($CRC_Rx != $CRC_Gen) {
 			print "*** Warning ***   HDLC_Rx CRC does not match " . $CRC_Rx . " <> " . $CRC_Gen . ".\n";
-			return 0;
+			return;
 		}
 	} else {
 		$Message = $Buffer,
 	}
 
-	#print "HDLC_Rx Message.\n";
-	#Bytes_2_HexString($Message);
-
+	if ($HDLC_Verbose == 3) {
+		print "HDLC_Rx Message.\n";
+		Bytes_2_HexString($Message);
+	}
 	# 01 Address
 	my $Address = ord(substr($Message, 0, 1));
 	#print "Address = ", sprintf("0x%x", $Address), "\n";
@@ -518,7 +523,7 @@ sub HDLC_Rx{
 	$Quant->FrameType(ord(substr($Message, 1, 1)));
 	#print "Frame Types = ", sprintf("0x%x", $FrameType), "\n";
 	switch ($Quant->FrameType) {
-		case 0x01 { # RR.
+		case 0x01 { # RR Receive Ready.
 			if ($Address == 253) {
 				$RR_Timer = 0;
 				$HDLC_Handshake = 1;
@@ -530,19 +535,20 @@ sub HDLC_Rx{
 		case 0x03 { # User Information.
 			#print "Case 0x03 UI.", substr($Message, 2, 1), "\n";
 			#Bytes_2_HexString($Message);
+			$Quant->LocalRx(1);
+			$Quant->LocalRx_Time($SerialPort->get_tick_count());
 			switch (ord(substr($Message, 2, 1))) {
 				case 0x00 { #Network ID, NID Start/Stop.
-					#Bytes_2_HexString($Message);
 					if ($HDLC_Verbose) {
 						print "UI 0x00 NID Start/Stop";
 					}
-					if (ord(substr($Message, 4, 1)) == $RTRT_Enabled) {
+					if (ord(substr($Message, 4, 1)) == $C_RTRT_Enabled) {
 						$RTRTOn = 1;
 						if ($HDLC_Verbose) {
 							print ", RT/RT Enabled";
 						}
 					}
-					if (ord(substr($Message, 4, 1)) == $RTRT_Disabled) {
+					if (ord(substr($Message, 4, 1)) == $C_RTRT_Disabled) {
 						$RTRTOn = 0;
 						if ($HDLC_Verbose) {
 							print ", RT/RT Disabled";
@@ -562,12 +568,16 @@ sub HDLC_Rx{
 							}
 							Tx_to_Network($Message);
 						}
+						case 0x0D {
+								print ", DIU Monitor";
+						}
 						case 0x25 { # StopTx
 							$IsEnd = 1;
 							if ($Verbose) {
 								print ", HDLC ICW Terminate";
 							}
 							Tx_to_Network($Message);
+							$Quant->LocalRx(0);
 						}
 					}
 					switch ($OpArg) {
@@ -582,7 +592,7 @@ sub HDLC_Rx{
 						}
 					}
 					if ($Verbose) {
-						print ", Astro Talk Group " . $Quant->AstroTalkGroup . ".\n";
+						print ", Linked Talk Group " . $LinkedTalkGroup . ".\n";
 						print "MMDVM_Connected " . $MMDVM_Connected . 
 						"\nP25NX_Connected " . $P25NX_Connected . "\n";
 					}
@@ -1013,10 +1023,10 @@ sub HDLC_Rx{
 			my $MessageType = ord(substr($Message, 2, 1));
 			my $StationSiteNumber = (int(ord(substr($Message, 3, 1))) - 1) / 2;
 			my $StationType = ord(substr($Message, 4, 1));
-			if ($StationType == $Quantar) {
+			if ($StationType == $C_Quantar) {
 				if ($HDLC_Verbose) {print "HDLC_Rx Quantar Station type.\n";}
 			}
-			if ($StationType == $DIU3000) {
+			if ($StationType == $C_DIU3000) {
 				if ($HDLC_Verbose) {print "HDLC_Rx DIU 3000 Station type.\n";}
 			}
 			HDLC_XID_Tx(0x0B);
@@ -1043,10 +1053,10 @@ sub HDLC_Tx{
 		$Data =~ s/\}/\}\]/g; # 0x7D to 0x7D 0x5D
 		$Data =~ s/\~/\}\^/g; # 0x7E to 0x7D 0x5E
 		if ($HDLC_Verbose >= 2) {print "Len(Data) = ", length($Data), "\n";}
-		$SerialPort->write(chr(0x7E) . $Data . chr(0x7E));
-		my $SerialWait = (1 / 9600 * 8) * (length($Data) + 0); # Frame length delay.
-		select(undef, undef, undef, $SerialWait);
-		if ($HDLC_Verbose) {print "Serial Wait $SerialWait\n";}
+		$SerialPort->write($Data . chr(0x7E));
+		my $SerialWait = (8.0 / 9600.0) * length($Data); # Frame length delay.
+		nanosleep($SerialWait * 1000000000);
+		if ($HDLC_Verbose) {print "Serial nanosleep = $SerialWait\n";}
 	}
 	if ($Mode == 1) { # STUN mode.
 		CiscoSTUN_Tx($Data);
@@ -1129,19 +1139,17 @@ sub Tx_to_Network{
 	my ($Buffer) = @_;
 	$DefaultTalkGroupTimer = time;
 	if ( ($LinkedTalkGroup > 11 and $LinkedTalkGroup < 10100) 
-	    or ($LinkedTalkGroup > 10599 and $LinkedTalkGroup < 65535) ) { # Case MMDVM.
+	    or ($LinkedTalkGroup > 10599 and $LinkedTalkGroup < 65535)
+	    or ($P25NX_Enabled and $Cisco_DMVPN_Enabled == 0
+	      and ($LinkedTalkGroup >= 10100 and $LinkedTalkGroup < 10600)) ) { # Case MMDVM.
 		HDLC_to_MMDVM($Buffer);
 	}
-	if ($LinkedTalkGroup >= 10100 and $LinkedTalkGroup < 10600) { # case P25NX.
-		if ($Cisco_DMVPN_Enabled) {
-			HDLC_to_P25NX($Buffer);
-		} else {
-			if ($P25NXv3_Enabled) {
-				
-			} else {
-				HDLC_to_MMDVM($Buffer);
-			}
-		}
+	if ($P25NX_Enabled and $Cisco_DMVPN_Enabled
+	    and ($LinkedTalkGroup >= 10100 and $LinkedTalkGroup < 10600)) { # case P25NX.
+		HDLC_to_P25NX($Buffer);
+	}
+	if ($P25Link_Enabled) {
+		HDLC_to_P25Link($Buffer);
 	}
 }
 
@@ -1190,24 +1198,19 @@ sub HDLC_to_P25NX{
 
 sub MMDVM_to_HDLC{
 	my ($Buffer) = @_;
-	if (length($Buffer) < 1) {return;}
-	if ($MMDVM_Verbose) {print "MMDVM_to_HDLC.\n";}
-	if ($MMDVM_Verbose == 2) {Bytes_2_HexString($Buffer);}
-	if ($HDLC_Enabled == 0 or $HDLC_Handshake == 0) {return;}
-	my $Address = 0x07;
-	my $RTRT;
-	if ($RTRT_Enabled_Value == 1) {
-		$RTRT = $RTRT_Enabled;
-	} else {
-		$RTRT = $RTRT_Disabled;
+	if ($HDLC_Handshake == 0 or length($Buffer) < 1) {return;}
+	if ($MMDVM_Verbose == 2) {
+		print "MMDVM_to_HDLC In.\n";
+		Bytes_2_HexString($Buffer);
 	}
+	my $Address = 0xFD; #0x07 or 0xFD
 	$Tx_Started = 1;
 	my $OpCode = ord(substr($Buffer, 0, 1));
 	switch ($OpCode) {
 		case [0x62..0x73] { # Use to bridge MMDVM to HDLC.
-			$Buffer = chr($Address) . chr($UI) . $Buffer;
-			if ($MMDVM_Verbose) {
-				print "bla\n";
+			$Buffer = chr($Address) . chr($C_UI) . $Buffer;
+			if ($MMDVM_Verbose == 2) {
+				print "MMDVM_to_HDLC Out:\n";
 				Bytes_2_HexString($Buffer);
 			}
 			$HDLC_TxTraffic = 1;
@@ -1215,11 +1218,17 @@ sub MMDVM_to_HDLC{
 		}
 		case 0x80 {
 			$Tx_Started = 0;
-			HDLC_Tx(chr($Address) . chr($UI) . chr(0x00) . chr(0x02). chr($RTRT) .
-				chr($EndTx) . chr($DVoice) . chr(0x00) . chr(0x00) . chr(0x00) .
+			my $RTRT;
+			if ($RTRT_Enabled == 1) {
+				$RTRT = $C_RTRT_Enabled;
+			} else {
+				$RTRT = $C_RTRT_Disabled;
+			}
+			HDLC_Tx(chr($Address) . chr($C_UI) . chr(0x00) . chr(0x02). chr($RTRT) .
+				chr($C_EndTx) . chr($C_DVoice) . chr(0x00) . chr(0x00) . chr(0x00) .
 				chr(0x00) . chr(0x00));
-			HDLC_Tx(chr($Address) . chr($UI) . chr(0x00) . chr(0x02). chr($RTRT) .
-				chr($EndTx) . chr($DVoice) . chr(0x00) . chr(0x00) . chr(0x00) .
+			HDLC_Tx(chr($Address) . chr($C_UI) . chr(0x00) . chr(0x02). chr($RTRT) .
+				chr($C_EndTx) . chr($C_DVoice) . chr(0x00) . chr(0x00) . chr(0x00) .
 				chr(0x00) . chr(0x00));
 			$HDLC_TxTraffic = 0;
 		}
@@ -1252,15 +1261,23 @@ sub ChangeLinkedTG{
 	if ($P25NX_Connected) {
 		P25NX_Disconnect($LinkedTalkGroup);
 	}
+	if ($P25Link_Connected) {
+#		P25Link_Disconnect($LinkedTalkGroup);
+	}
 	# Now connect to a network.
-	if ( ($TalkGroup > 10 and $TalkGroup < 10100)
-	    or ($TalkGroup >= 10600 and $TalkGroup < 65535)
-	    or ($Cisco_DMVPN_Enabled == 0 and ($TalkGroup >= 10100 and $TalkGroup < 10600)) ) { # MMDVM.
+	if ( $MMDVM_Enabled
+	    and ($TalkGroup > 10 and $TalkGroup < 10100) # MMDVM.
+	    or ($P25NX_Enabled and $Cisco_DMVPN_Enabled == 0 
+		and ($TalkGroup >= 10100 and $TalkGroup < 10600)) # MMDVM P25NX Ref. 
+	    or ($TalkGroup >= 10600 and $TalkGroup < 65535)) { # MMDVM.
 		# Search for TG data.
 		for (my $Index = 0; $Index < $NumberOfReflectors; $Index++) { 
-			if ($Links[1] == $TalkGroup) {
+			if ($Links[$Index][1] eq $TalkGroup) {
 				$ActiveLinkIndex = $Index;
 			}
+		}
+		if ($MMDVM_Verbose) {
+			print "ActiveLinkIndex = $ActiveLinkIndex\n";
 		}
 		$MMDVM_Addr->Address($Links[$ActiveLinkIndex][2]);
 		$MMDVM_Addr->Port($Links[$ActiveLinkIndex][3]);
@@ -1285,7 +1302,8 @@ sub ChangeLinkedTG{
 		WritePoll();
 		WritePoll();
 	}
-	if ($Cisco_DMVPN_Enabled and $TalkGroup >= 10100 and $TalkGroup < 10600) { # case P25NX
+	if ($P25NX_Enabled and $Cisco_DMVPN_Enabled
+	    and $TalkGroup >= 10100 and $TalkGroup < 10600) { # case P25NX.
 		my $MulticastAddress = makeMulticastAddress($TalkGroup);
 		if ($Verbose) {print "P25NX Connecting to " . $TalkGroup .
 			" Multicast Addr. " . $MulticastAddress . "\n";
@@ -1306,12 +1324,17 @@ sub ChangeLinkedTG{
 		$P25NX_Sock->mcast_loopback(0);
 		$P25NX_Connected = 1;	
 	}
-
-
+	if ($P25Link_Enabled
+	    and $TalkGroup >= 10100 and $TalkGroup < 10600) { # case P25Link.
+		
+	}
 	# Finalize link.
 	$LinkedTalkGroup = $TalkGroup;
 	$DefaultTalkGroupTimer = time;
-	if ($UseVoicePrompts) {SaySomething($TalkGroup);}
+	if ($UseVoicePrompts) {
+		$VA_Message = $LinkedTalkGroup; # Linked TalkGroup.
+		$Pending_VA = 1;
+	}
 	print "System Linked to TG " . $LinkedTalkGroup . "\n";
 }
 
@@ -1470,6 +1493,7 @@ sub P25NX_Tx{ # This function expect to Rx a formed  Cisco STUN Packet.
 sub MainLoop{
 	for (;;) {
 		(my $sec, my $min, my $hour, my $mday, my $mon, my $year, my $wday, my $yday, my $isdst) = localtime();
+		$TickCount = $SerialPort->get_tick_count();
 		# HDLC Receive Ready keep alive.
 		my $RR_Timeout = $RR_NextTimer - time;
 		if ($RR_Timer = 1 && $RR_Timeout <= 0) {
@@ -1500,7 +1524,7 @@ sub MainLoop{
 			for my $MMDVM_fh ($MMDVM_Sel->can_read(0.001)) {
 				$MMDVM_RemoteHost = $MMDVM_fh->recv(my $MMDVM_Buffer, $MaxLen);
 				$MMDVM_RemoteHost = $MMDVM_fh->peerhost;
-				#if ($Verbose) {print "MMDVM_LocalHost = " . $MMDVM_LocalHost . "\n";}
+				if ($MMDVM_Verbose) {print "MMDVM_LocalHost = " . $MMDVM_LocalHost . "\n";}
 				if (($MMDVM_RemoteHost cmp $MMDVM_LocalHost) != 0) {
 					#if ($Verbose) {print $hour . ":" . $min . ":" . $sec .
 					#	" " . $MMDVM_RemoteHost .
@@ -1532,9 +1556,25 @@ sub MainLoop{
 			print "Default Talk Group Timeout.\n";
 			$DefaultTalkGroupTimer = time;
 			ChangeLinkedTG($DefaultTalkGroup);
+			if ($UseVoicePrompts) {
+				$VA_Message = 1; # Default Revert.
+				$Pending_VA = 1;
+			}
+		}
+		# End of Tx timmer (1 sec).
+		if ($Quant->LocalRx and ($Quant->LocalRx_Time + 1000 >= $TickCount)) {
+			$Quant->LocalRx(0);
 		}
 
+
 		# Voice Announce.
+		if ($HDLC_Handshake and $Quant->LocalRx == 0 and $Pending_VA) {
+			SaySomething($VA_Message);
+			$Pending_VA = 0;
+		}
+
+
+
 #		if ($Mode == 0) {
 #			$TickCount = sprintf("%d", $SerialPort->get_tick_count());
 #			if ($TickCount > $FutureTickCount){
@@ -1549,7 +1589,6 @@ sub MainLoop{
 
 sub SaySomething{
 	my ($ThingToSay) = @_;
-	if ($HDLC_Handshake == 0) {return;}
 	my @Speech;
 	print "Voice Announcement running.\n";
 	$HDLC_TxTraffic = 1;
@@ -1621,12 +1660,11 @@ sub SaySomething{
 	for (my $x = 0; $x < scalar(@Speech); $x++) {
 		$Message = HexString_2_Bytes($Speech[$x]);
 		HDLC_Tx($Message);
-		my $SerialWait = (1 / 9600 * 8) * (1); # Frame length delay.
-		select(undef, undef, undef, $SerialWait);
+		my $SerialWait = (8.0 / 9600.0) * 1; # 1 Byte length delay for VA.
+		nanosleep($SerialWait * 1000000000);
 	}
 	$HDLC_TxTraffic = 0;
-	print "Value = $Value\n";
-	$Value++;
+	print "  Voice Announcement done.\n";
 }
 
 
