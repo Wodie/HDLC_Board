@@ -32,7 +32,7 @@ print "Loading Settings...\n";
 my $cfg = Config::IniFiles->new( -file => "config.ini");
 # Settings:
 my $Mode = $cfg->val('Settings', 'Mode'); #0 = v.24, no other modes coded at the momment.
-my $LocalHost = $cfg->val('Settings', 'Local_Host');
+my $LocalHost = $cfg->val('Settings', 'LocalHost');
 my $P25NX_STUN_ID = sprintf("%x", hex($cfg->val('Settings', 'STUN_ID')));
 my $P25NX_Enabled = $cfg->val('Settings', 'P25NX_Enabled');
 my $RTRT_Enabled = $cfg->val('Settings', 'RTRT_Enabled');
@@ -327,7 +327,6 @@ if ($Mode == 0) {
 # Init MMDVM.
 print "Init MMDVM.\n";
 my $MMDVM_LocalHost = $LocalHost; # Bind Address.
-#my $MMDVM_LocalHost = '192.168.0.103';# Bind Address.
 my $MMDVM_LocalPort = 41020; # Local Port.
 my $MMDVM_RemoteHost; # Buffer for Rx data IP.
 my $MMDVM_Poll_Timer_Interval = 5; # sec.
