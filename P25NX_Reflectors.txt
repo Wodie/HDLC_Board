@@ -1,28 +1,42 @@
-Setting P25NX v2 reflectors on MMDVM
+# While the MMDVM P25Gateway files are updated on all MMDVMs, you will need to few lines at the end of the following files:
+# So point your browser to:
+pi-star/admin/expert/ssh_access.php 
 
 # File 1
-# Point your browser to:
-pi-star/admin/expert/ssh_access.php
-# Type:
-sudo su
-cd /root
-rpi-rw
-nano P25Hosts.txt
-# Add at the end of the file (use Tabs, no spaces):
-
-10101	44.98.249.177	41001
-10102	44.98.249.177	41002
-10103	44.98.249.177	41003
-10202	44.98.249.177	41004
-10203	44.98.249.177	41005
-10302	44.98.249.177	41006
-10303	44.98.249.177	41007
-
-# Ctrl o, Enter
-# Ctrl x
-# Make a pi-star Update
-
-
-
-# File 2, make the same changes that you did on File 1.
+rpi-rw 
 sudo nano /usr/local/etc/P25HostsLocal.txt
+
+# Add at the end of the file (use Tabs, no spaces): 
+#TG   IP or Domain  Port 
+10101 44.98.254.131 41000
+10102 44.98.254.131 41001
+10103 44.98.254.131 41002
+10202 44.98.254.131 41003
+10203 44.98.254.131 41004
+10302 44.98.254.131 41005
+10303 44.98.254.131 41006
+
+# Ctrl + o to save file
+# Ctrl + x to close the editor
+
+# File 2 
+sudo su 
+cd /root 
+rpi-rw 
+nano P25Hosts.txt 
+
+# Again add at the end of the file (use Tabs, no spaces): 
+#TG   IP or Domain  Port 
+10101 44.98.254.131 41000
+10102 44.98.254.131 41001
+10103 44.98.254.131 41002
+10202 44.98.254.131 41003
+10203 44.98.254.131 41004
+10302 44.98.254.131 41005
+10303 44.98.254.131 41006
+
+# Ctrl + o to save file
+# Ctrl + x to close the editor
+
+# Apply changes
+# Now on your browser displaying your Pi-Star controls, cilck on 'Configuration' and then click on 'Update' so the changes will be applied.
