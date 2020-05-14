@@ -28,14 +28,16 @@ install Digest::CRC
 
 install Device::SerialPort
 
+install Term::ReadKey
+
 exit
  
 To make an exe file:
-sudo chmod +x QuantarNet.pl
+sudo chmod +x p25nx_v2.0.13.pl
 
 sudo cpan -i PAR::Packer
 
-pp -o QuantarNet.exe QuantarNet.pl
+pp -o p25nx.exe p25nx_v2.0.13.pl
 
 
 This software and hardware is licenced under the GPL v3. If you are using it, please let me know, I will be glad to know it.
