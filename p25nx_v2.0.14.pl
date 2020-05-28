@@ -85,27 +85,27 @@ if (!open($fh, "<", $TalkGroupsFile)) {
 		next if $Line =~ /^\#/ || $Line =~ /^\s*$/ || $Line =~ /^\+/;
 		#split each line into array
 		my @Line = split(/\s+/, $Line);
-		$TG{$Line[0]}{RF_TalkGroup} = $Line[0];
-		$TG{$Line[0]}{P25NX_TalkGroup} = $Line[1];
-		$TG{$Line[0]}{MMDVM_TalkGroup} = $Line[2];
-		$TG{$Line[0]}{MMDVM_URL} = $Line[3];
-		$TG{$Line[0]}{MMDVM_Port} = $Line[4];
-		$TG{$Line[0]}{Scan} = $Line[5];
-		$TG{$Line[0]}{Linked} = 0;
-		$TG{$Line[0]}{MMDVM_Connected} = 0;
-		$TG{$Line[0]}{P25NX_Connected} = 0;
-		$TG{$Line[0]}{P25Link_Connected} = 0;
+		$TG{$Line[0]}{'RF_TalkGroup'} = $Line[0];
+		$TG{$Line[0]}{'P25NX_TalkGroup'} = $Line[1];
+		$TG{$Line[0]}{'MMDVM_TalkGroup'} = $Line[2];
+		$TG{$Line[0]}{'MMDVM_URL'} = $Line[3];
+		$TG{$Line[0]}{'MMDVM_Port'} = $Line[4];
+		$TG{$Line[0]}{'Scan'} = $Line[5];
+		$TG{$Line[0]}{'Linked'} = 0;
+		$TG{$Line[0]}{'MMDVM_Connected'} = 0;
+		$TG{$Line[0]}{'P25NX_Connected'} = 0;
+		$TG{$Line[0]}{'P25Link_Connected'} = 0;
 		if ($TG_Verbose) {
-			print "  RF TG " . $TG{$Line[0]}{RF_TalkGroup};
-			print ", PNX " . $TG{$Line[0]}{P25NX_TalkGroup};
-			print ", MMDVM " . $TG{$Line[0]}{MMDVM_TalkGroup};
-			print ", URL " . $TG{$Line[0]}{MMDVM_URL};
-			print ", Port " . $TG{$Line[0]}{MMDVM_Port};
-			print ", Scan " . $TG{$Line[0]}{Scan} . "\n";
+			print "  RF TG " . $TG{$Line[0]}{'RF_TalkGroup'};
+			print ", PNX " . $TG{$Line[0]}{'P25NX_TalkGroup'};
+			print ", MMDVM " . $TG{$Line[0]}{'MMDVM_TalkGroup'};
+			print ", URL " . $TG{$Line[0]}{'MMDVM_URL'};
+			print ", Port " . $TG{$Line[0]}{'MMDVM_Port'};
+			print ", Scan " . $TG{$Line[0]}{'Scan'} . "\n";
 		}
 	}
 	close $fh;
-	if ($TG_Verbose >= 2) {
+	if ($TG_Verbose > 2) {
 		foreach my $key (keys %TG)
 		{
 			print "  Key field: $key\n";
@@ -174,62 +174,62 @@ print "  Verbose = $HDLC_Verbose\n";
 
 my %Quant;
 foreach (my $i = 0; $i < 1; $i++ ) {
-	$Quant{$i}{FrameType} = 0;
-	$Quant{$i}{LocalRx} = 0;
-	$Quant{$i}{LocalRx_Time} = 0;
-	$Quant{$i}{IsDigitalVoice} = 0;
-	$Quant{$i}{IsPage} = 0;
-	$Quant{$i}{dBm} = 0;
-	$Quant{$i}{RSSI} = 0;
-	$Quant{$i}{RSSI_Is_Valid} = 0;
-	$Quant{$i}{InvertedSignal} = 0;
-	$Quant{$i}{CandidateAdjustedMM} = 0;
-	$Quant{$i}{BER} = 0;
-	$Quant{$i}{SourceDev} = 0;
-	$Quant{$i}{Encrypted} = 0;
-	$Quant{$i}{Explicit} = 0;
-	$Quant{$i}{IndividualCall} = 0;
-	$Quant{$i}{ManufacturerID} = 0;
-	$Quant{$i}{Emergency} = 0;
-	$Quant{$i}{Protected} = 0;
-	$Quant{$i}{FullDuplex} = 0;
-	$Quant{$i}{PacketMode} = 0;
-	$Quant{$i}{Priority} = 0;
-	$Quant{$i}{IsTGData} = 0;
-	$Quant{$i}{AstroTalkGroup} = 0;
-	$Quant{$i}{DestinationRadioID} = 0;
-	$Quant{$i}{SourceRadioID} = 0;
-	$Quant{$i}{LSD} = 0;
-	$Quant{$i}{LSD0} = 0;
-	$Quant{$i}{LSD1} = 0;
-	$Quant{$i}{LSD2} = 0;
-	$Quant{$i}{LSD3} = 0;
-	$Quant{$i}{EncryptionI} = 0;
-	$Quant{$i}{EncryptionII} = 0;
-	$Quant{$i}{EncryptionIII} = 0;
-	$Quant{$i}{EncryptionIV} = 0;
-	$Quant{$i}{Algorythm} = 0;
-	$Quant{$i}{KeyID} = 0;
-	$Quant{$i}{Speech} = "";
-	$Quant{$i}{Raw0x62} = "";
-	$Quant{$i}{Raw0x63} = "";
-	$Quant{$i}{Raw0x64} = "";
-	$Quant{$i}{Raw0x65} = "";
-	$Quant{$i}{Raw0x66} = "";
-	$Quant{$i}{Raw0x67} = "";
-	$Quant{$i}{Raw0x68} = "";
-	$Quant{$i}{Raw0x69} = "";
-	$Quant{$i}{Raw0x6A} = "";
-	$Quant{$i}{Raw0x6B} = "";
-	$Quant{$i}{Raw0x6C} = "";
-	$Quant{$i}{Raw0x6D} = "";
-	$Quant{$i}{Raw0x6E} = "";
-	$Quant{$i}{Raw0x6F} = "";
-	$Quant{$i}{Raw0x70} = "";
-	$Quant{$i}{Raw0x71} = "";
-	$Quant{$i}{Raw0x72} = "";
-	$Quant{$i}{Raw0x73} = "";
-	$Quant{$i}{SuperFrame} = "";
+	$Quant{$i}{'FrameType'} = 0;
+	$Quant{$i}{'LocalRx'} = 0;
+	$Quant{$i}{'LocalRx_Time'} = 0;
+	$Quant{$i}{'IsDigitalVoice'} = 0;
+	$Quant{$i}{'IsPage'} = 0;
+	$Quant{$i}{'dBm'} = 0;
+	$Quant{$i}{'RSSI'} = 0;
+	$Quant{$i}{'RSSI_Is_Valid'} = 0;
+	$Quant{$i}{'InvertedSignal'} = 0;
+	$Quant{$i}{'CandidateAdjustedMM'} = 0;
+	$Quant{$i}{'BER'} = 0;
+	$Quant{$i}{'SourceDev'} = 0;
+	$Quant{$i}{'Encrypted'} = 0;
+	$Quant{$i}{'Explicit'} = 0;
+	$Quant{$i}{'IndividualCall'} = 0;
+	$Quant{$i}{'ManufacturerID'} = 0;
+	$Quant{$i}{'Emergency'} = 0;
+	$Quant{$i}{'Protected'} = 0;
+	$Quant{$i}{'FullDuplex'} = 0;
+	$Quant{$i}{'PacketMode'} = 0;
+	$Quant{$i}{'Priority'} = 0;
+	$Quant{$i}{'IsTGData'} = 0;
+	$Quant{$i}{'AstroTalkGroup'} = 0;
+	$Quant{$i}{'DestinationRadioID'} = 0;
+	$Quant{$i}{'SourceRadioID'} = 0;
+	$Quant{$i}{'LSD'} = [0, 0, 0, 0];
+	$Quant{$i}{'LSD0'} = 0;
+	$Quant{$i}{'LSD1'} = 0;
+	$Quant{$i}{'LSD2'} = 0;
+	$Quant{$i}{'LSD3'} = 0;
+	$Quant{$i}{'EncryptionI'} = 0;
+	$Quant{$i}{'EncryptionII'} = 0;
+	$Quant{$i}{'EncryptionIII'} = 0;
+	$Quant{$i}{'EncryptionIV'} = 0;
+	$Quant{$i}{'Algorythm'} = 0;
+	$Quant{$i}{'KeyID'} = 0;
+	$Quant{$i}{'Speech'} = "";
+	$Quant{$i}{'Raw0x62'} = "";
+	$Quant{$i}{'Raw0x63'} = "";
+	$Quant{$i}{'Raw0x64'} = "";
+	$Quant{$i}{'Raw0x65'} = "";
+	$Quant{$i}{'Raw0x66'} = "";
+	$Quant{$i}{'Raw0x67'} = "";
+	$Quant{$i}{'Raw0x68'} = "";
+	$Quant{$i}{'Raw0x69'} = "";
+	$Quant{$i}{'Raw0x6A'} = "";
+	$Quant{$i}{'Raw0x6B'} = "";
+	$Quant{$i}{'Raw0x6C'} = "";
+	$Quant{$i}{'Raw0x6D'} = "";
+	$Quant{$i}{'Raw0x6E'} = "";
+	$Quant{$i}{'Raw0x6F'} = "";
+	$Quant{$i}{'Raw0x70'} = "";
+	$Quant{$i}{'Raw0x71'} = "";
+	$Quant{$i}{'Raw0x72'} = "";
+	$Quant{$i}{'Raw0x73'} = "";
+	$Quant{$i}{'SuperFrame'} = "";
 }
 #
 # ICW (Infrastructure Control Word).
@@ -319,9 +319,9 @@ if ($Mode == 0) {
 	#$TickCount = sprintf("%d", $SerialPort->get_tick_count());
 	#$FutureTickCount = $TickCount + 5000;
 	#print "  TickCount = $TickCount\n\n";
+	print "To use Raspberry Pi UART you need to disable Bluetooth by editing: /boot/config.txt\n" .
+	 	"Add line: dtoverlay=pi3-disable-bt-overlay\n";
 }
-# To use Raspberry Pi UART you need to disable Bluetooth by editing: /boot/config.txt
-# Add line: dtoverlay=pi3-disable-bt-overlay
 print "----------------------------------------------------------------------\n";
 
 
@@ -364,12 +364,12 @@ my $LinkedTalkGroup = $PriorityTG;
 my $PriorityTGActive = 0;
 my $MuteTGTimer = time();
 foreach my $key (keys %TG) {
-	if ($TG{$key}{Scan}) {
+	if ($TG{$key}{'Scan'}) {
 		AddLinkTG($key);
 	}
 }
-if ($PriorityTG > 10 and !$TG{$PriorityTG}{Scan}) {
-	$TG{$PriorityTG}{Scan} = 10;
+if ($PriorityTG > 10 and !$TG{$PriorityTG}{'Scan'}) {
+	$TG{$PriorityTG}{'Scan'} = 10;
 	AddLinkTG($PriorityTG);
 }
 print "----------------------------------------------------------------------\n";
@@ -482,17 +482,17 @@ if ($Mode == 0) { # Close Serial Port:
 	$SerialPort->close || die "Failed to close SerialPort.\n";
 }
 foreach my $key (keys %TG){ # Close Socket connections:
-	if ($TG{$key}{MMDVM_Connected}) {
-		WriteUnlink($TG{$key}{MMDVM_TalkGroup});
-		$TG{$key}{Sock}->close();
+	if ($TG{$key}{'MMDVM_Connected'}) {
+		WriteUnlink($TG{$key}{'MMDVM_TalkGroup'});
+		$TG{$key}{'Sock'}->close();
 	}
-	if ($TG{$key}{P25NX_Connected}) {
-		P25NX_Disconnect($TG{$key}{P25NX_TalkGroup});
-		$TG{$key}{Sock}->close();
+	if ($TG{$key}{'P25NX_Connected'}) {
+		P25NX_Disconnect($TG{$key}{'P25NX_TalkGroup'});
+		$TG{$key}{'Sock'}->close();
 	}
-	if ($TG{$key}{P25Link_Connected}) {
-		P25Link_Disconnect($TG{$key}{P25Link_TalkGroup});
-		$TG{$key}{Sock}->close();
+	if ($TG{$key}{'P25Link_Connected'}) {
+		P25Link_Disconnect($TG{$key}{'P25Link_TalkGroup'});
+		$TG{$key}{'Sock'}->close();
 	}
 }
 print "Good bye cruel World.\n";
@@ -627,9 +627,9 @@ sub HDLC_Rx{
 	#print "Address = ", sprintf("0x%x", $Address), "\n";
 	#Bytes_2_HexString($Message);
 	
-	$Quant{$Index}{FrameType} = ord(substr($Message, 1, 1));
+	$Quant{$Index}{'FrameType'} = ord(substr($Message, 1, 1));
 	#print "Frame Types = ", sprintf("0x%x", $FrameType), "\n";
-	switch ($Quant{$Index}{FrameType}) {
+	switch ($Quant{$Index}{'FrameType'}) {
 		case 0x01 { # RR Receive Ready.
 			if ($Address == 253) {
 				$RR_Timer = 0;
@@ -642,8 +642,8 @@ sub HDLC_Rx{
 		case 0x03 { # User Information.
 			#print "Case 0x03 UI.", substr($Message, 2, 1), "\n";
 			#Bytes_2_HexString($Message);
-			$Quant{$Index}{LocalRx} = 1;
-			$Quant{$Index}{LocalRx_Time} = getTickCount();
+			$Quant{$Index}{'LocalRx'} = 1;
+			$Quant{$Index}{'LocalRx_Time'} = getTickCount();
 			switch (ord(substr($Message, 2, 1))) {
 				case 0x00 { #Network ID, NID Start/Stop.
 					if ($HDLC_Verbose) {
@@ -685,7 +685,7 @@ sub HDLC_Rx{
 							if ($HDLC_Verbose) {
 								print ", HDLC ICW Terminate";
 							}
-							$Quant{$Index}{LocalRx} = 0;
+							$Quant{$Index}{'LocalRx'} = 0;
 							Tx_to_Network($Message);
 						}
 					}
@@ -748,15 +748,15 @@ sub HDLC_Rx{
 						}
 					}
 					if (ord(substr($Message, 9, 1)) == 1) {
-						$Quant{$Index}{RSSI_Is_Valid} = 1;
-						$Quant{$Index}{RSSI} = ord(substr($Message, 8, 1));
-						$Quant{$Index}{InvertedSignal} = ord(substr($Message, 10, 1));
+						$Quant{$Index}{'RSSI_Is_Valid'} = 1;
+						$Quant{$Index}{'RSSI'} = ord(substr($Message, 8, 1));
+						$Quant{$Index}{'InvertedSignal'} = ord(substr($Message, 10, 1));
 						if ($HDLC_Verbose) {
-							print ", RSSI = " . $Quant{$Index}{RSSI} . "\n";
-							print ", Inverted signal = " . $Quant{$Index}{InvertedSignal} . "\n";
+							print ", RSSI = " . $Quant{$Index}{'RSSI'} . "\n";
+							print ", Inverted signal = " . $Quant{$Index}{'InvertedSignal'} . "\n";
 						}
 					} else {
-						$Quant{$Index}{RSSI_Is_Valid} = 0;
+						$Quant{$Index}{'RSSI_Is_Valid'} = 0;
 						if ($HDLC_Verbose) {print ".\n";}
 					}
 				}
@@ -785,13 +785,13 @@ sub HDLC_Rx{
 					}
 					switch (ord(substr($Message, 6, 1))) {
 						case 0x0B { # DVoice
-							$Quant{$Index}{IsDigitalVoice} = 1;
-							$Quant{$Index}{IsPage} = 0;
+							$Quant{$Index}{'IsDigitalVoice'} = 1;
+							$Quant{$Index}{'IsPage'} = 0;
 							if ($HDLC_Verbose) {print ", Digital Voice";}
 						}
 						case 0x0F { # Page
-							$Quant{$Index}{IsDigitalVoice} = 0;
-							$Quant{$Index}{IsPage} = 1;
+							$Quant{$Index}{'IsDigitalVoice'} = 0;
+							$Quant{$Index}{'IsPage'} = 1;
 							if ($HDLC_Verbose) {print ", Page";}
 						}
 					}
@@ -805,58 +805,58 @@ sub HDLC_Rx{
 						}
 					}
 					if (ord(substr($Message, 9, 1))) {
-						$Quant{$Index}{RSSI_Is_Valid} = 1;
-						$Quant{$Index}{RSSI} = ord(substr($Message, 8, 1));
-						$Quant{$Index}{InvertedSignal} = ord(substr($Message, 10, 1));
-						$Quant{$Index}{CandidateAdjustedMM} = ord(substr($Message, 11, 1));
+						$Quant{$Index}{'RSSI_Is_Valid'} = 1;
+						$Quant{$Index}{'RSSI'} = ord(substr($Message, 8, 1));
+						$Quant{$Index}{'InvertedSignal'} = ord(substr($Message, 10, 1));
+						$Quant{$Index}{'CandidateAdjustedMM'} = ord(substr($Message, 11, 1));
 						if ($HDLC_Verbose) {
-							print ", RSSI = " . $Quant{$Index}{RSSI};
-							print ", Inverted signal = " . $Quant{$Index}{InvertedSignal};
+							print ", RSSI = " . $Quant{$Index}{'RSSI'};
+							print ", Inverted signal = " . $Quant{$Index}{'InvertedSignal'};
 						}
 					} else {
-						$Quant{$Index}{RSSI_Is_Valid} = 0;
+						$Quant{$Index}{'RSSI_Is_Valid'} = 0;
 					}
 					if ($HDLC_Verbose) {print "\n";}
-					$Quant{$Index}{Speech} = ord(substr($Message, 12, 11));
-					$Quant{$Index}{Raw0x62} = $Message;
-					$Quant{$Index}{SuperFrame} = $Message;
-					$Quant{$Index}{SourceDev} = ord(substr($Message, 23, 1));
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 12, 11));
+					$Quant{$Index}{'Raw0x62'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Message;
+					$Quant{$Index}{'SourceDev'} = ord(substr($Message, 23, 1));
 					Tx_to_Network($Message);
 
 				}
 				case 0x63 {
 					if ($HDLC_Verbose) {print "UI 0x63 IMBE Voice part 2.\n";}
-					$Quant{$Index}{Speech} = ord(substr($Message, 3, 11));
-					$Quant{$Index}{Raw0x63} = $Message;
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
-					$Quant{$Index}{SourceDev} = ord(substr($Message, 14, 1));
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 3, 11));
+					$Quant{$Index}{'Raw0x63'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
+					$Quant{$Index}{'SourceDev'} = ord(substr($Message, 14, 1));
 					Tx_to_Network($Message);
 				}
 				case 0x64 { # Group/Direct Call, Clear/Private.
 					if ($HDLC_Verbose) {print "UI 0x64 IMBE Voice part 3 + link control.\n";}
 					if (ord(substr($Message, 3, 1)) & 0x80) {
-						$Quant{$Index}{Encrypted} = 1;
+						$Quant{$Index}{'Encrypted'} = 1;
 					}
 					if (ord(substr($Message, 3, 1))& 0x40) {
-						$Quant{$Index}{Explicit} = 1;
+						$Quant{$Index}{'Explicit'} = 1;
 					}
-					$Quant{$Index}{IsTGData} = 0;
+					$Quant{$Index}{'IsTGData'} = 0;
 					switch (ord(substr($Message, 3, 1)) & 0x0F) {
 						case 0x00 { # Group voice channel user.
-							$Quant{$Index}{IsTGData} = 1;
-							$Quant{$Index}{IndividualCall} = 0;
+							$Quant{$Index}{'IsTGData'} = 1;
+							$Quant{$Index}{'IndividualCall'} = 0;
 						}
 						case 0x02 { # Group voice channel update.
-							$Quant{$Index}{IndividualCall} = 0;
+							$Quant{$Index}{'IndividualCall'} = 0;
 						}
 						case 0x03 { # Unit to unit voice channel user.
-							$Quant{$Index}{IndividualCall} = 1;
+							$Quant{$Index}{'IndividualCall'} = 1;
 						}
 						case 0x04 { # Group voice channel update - explicit.
-							$Quant{$Index}{IndividualCall} = 1;
+							$Quant{$Index}{'IndividualCall'} = 1;
 						}
 						case 0x05 { # Unit to unit answer request.
-							$Quant{$Index}{IndividualCall} = 1;
+							$Quant{$Index}{'IndividualCall'} = 1;
 						}
 						case 0x06 { # Telephone interconnect voice channel user.
 							print "Misterious packet.";
@@ -869,104 +869,104 @@ sub HDLC_Rx{
 						}
 
 					}
-					$Quant{$Index}{ManufacturerID} = ord(substr($Message, 4, 1));
+					$Quant{$Index}{'ManufacturerID'} = ord(substr($Message, 4, 1));
 					if (ord(substr($Message, 5, 1)) and 0x80) {
-						$Quant{$Index}{Emergency} = 1;
+						$Quant{$Index}{'Emergency'} = 1;
 					} else {
-						$Quant{$Index}{Emergency} = 0;
+						$Quant{$Index}{'Emergency'} = 0;
 					}
 					if (ord(substr($Message, 5, 1)) and 0x40) {
-						$Quant{$Index}{Protected} = 1;
+						$Quant{$Index}{'Protected'} = 1;
 					} else {
-						$Quant{$Index}{Protected} = 0;
+						$Quant{$Index}{'Protected'} = 0;
 					}
 					if (ord(substr($Message, 5, 1)) and 0x20) {
-						$Quant{$Index}{FullDuplex} = 1;
+						$Quant{$Index}{'FullDuplex'} = 1;
 					} else {
-						$Quant{$Index}{FullDuplex} = 0;
+						$Quant{$Index}{'FullDuplex'} = 0;
 					}
 					if (ord(substr($Message, 5, 1)) and 0x10) {
-						$Quant{$Index}{PacketMode} = 1;
+						$Quant{$Index}{'PacketMode'} = 1;
 					} else {
-						$Quant{$Index}{PacketMode} = 0;
+						$Quant{$Index}{'PacketMode'} = 0;
 					}
-					$Quant{$Index}{Priority} = ord(substr($Message, 5, 1));
-					$Quant{$Index}{Speech} = ord(substr($Message, 7, 11));
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
-					$Quant{$Index}{Raw0x64} = $Message;
+					$Quant{$Index}{'Priority'} = ord(substr($Message, 5, 1));
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 7, 11));
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
+					$Quant{$Index}{'Raw0x64'} = $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x65 { # Talk Group.
 					if ($HDLC_Verbose) {print "UI 0x65 IMBE Voice part 4 + link control.\n";}
 					#Bytes_2_HexString($Message);
-					if ($Quant{$Index}{IsTGData} == 1) {
-
+					if ($Quant{$Index}{'IsTGData'} == 1) {
 						my $MMSB = ord(substr($Message, 3, 1));
 						my $MSB = ord(substr($Message, 4, 1));
 						my $LSB = ord(substr($Message, 5, 1));
-						$Quant{$Index}{AstroTalkGroup} = ($MSB << 8) | $LSB;
-						$Quant{$Index}{DestinationRadioID} = ($MMSB << 16) | ($MSB << 8) | $LSB;
+						$Quant{$Index}{'AstroTalkGroup'} = ($MSB << 8) | $LSB;
+						$Quant{$Index}{'DestinationRadioID'} = ($MMSB << 16) | ($MSB << 8) | $LSB;
 
-						if ($Quant{$Index}{IndividualCall}) {
-							if ($HDLC_Verbose) {print "Destination ID = " . $Quant{$Index}{DestinationID} . "\n";}
+						# Leave previous line empty.
+						if ($Quant{$Index}{'IndividualCall'}) {
+							if ($HDLC_Verbose) {print "Destination ID = " . $Quant{$Index}{'DestinationID'} . "\n";}
 						} else {
-							if ($HDLC_Verbose) {print "AstroTalkGroup = " . $Quant{$Index}{AstroTalkGroup} . "\n";}
-							AddLinkTG($Quant{$Index}{AstroTalkGroup});
+							if ($HDLC_Verbose) {print "AstroTalkGroup = " . $Quant{$Index}{'AstroTalkGroup'} . "\n";}
+							AddLinkTG($Quant{$Index}{'AstroTalkGroup'});
 						}
 					}
-					$Quant{$Index}{Speech} = ord(substr($Message, 7, 11));
-					$Quant{$Index}{Raw0x65} = $Message;
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 7, 11));
+					$Quant{$Index}{'Raw0x65'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x66 { # Source ID.
 					if ($HDLC_Verbose) {print "UI 0x66 IMBE Voice part 5. + link control.\n";}
 					# Get Called ID.
-					if ($Quant{$Index}{IsTGData}) {
-
+					if ($Quant{$Index}{'IsTGData'}) {
 						my $MMSB = ord(substr($Message, 3, 1));
 						my $MSB = ord(substr($Message, 4, 1));
 						my $LSB = ord(substr($Message, 5, 1));
-						$Quant{$Index}{SourceRadioID} = ($MMSB << 16) | ($MSB << 8) | $LSB;
+						$Quant{$Index}{'SourceRadioID'} = ($MMSB << 16) | ($MSB << 8) | $LSB;
 
-						if ($HDLC_Verbose) {print "HDLC SourceRadioID = " . $Quant{$Index}{SourceRadioID} . "\n";}
+						# Leave previous line empty.
+						if ($HDLC_Verbose) {print "HDLC SourceRadioID = " . $Quant{$Index}{'SourceRadioID'} . "\n";}
 						#QSO_Log($Index, $RemoteHostIP);
 					} else {
 						if ($Verbose) {print "Misterious packet 0x66\n";}
 					}
-					$Quant{$Index}{Speech} = ord(substr($Message, 7, 11));
-					$Quant{$Index}{Raw0x66} = $Message;
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 7, 11));
+					$Quant{$Index}{'Raw0x66'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x67 { # TBD
 					if ($HDLC_Verbose) {print "UI 0x67 IMBE Voice part 6 + link control.\n";}
-					$Quant{$Index}{Speech} = ord(substr($Message, 7, 11));
-					$Quant{$Index}{Raw0x67} = $Message;
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 7, 11));
+					$Quant{$Index}{'Raw0x67'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x68 {
 					if ($HDLC_Verbose) {print "UI 0x68 IMBE Voice part 7 + link control.\n";}
-					$Quant{$Index}{Speech} = ord(substr($Message, 7, 11));
-					$Quant{$Index}{Raw0x68} = $Message;
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 7, 11));
+					$Quant{$Index}{'Raw0x68'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x69 {
 					if ($HDLC_Verbose) {print "UI 0x69 IMBE Voice part 8 + link control.\n";}
-					$Quant{$Index}{Speech} = ord(substr($Message, 7, 11));
-					$Quant{$Index}{Raw0x69} = $Message;
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 7, 11));
+					$Quant{$Index}{'Raw0x69'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x6A { # Low speed data Byte 1.
 					if ($HDLC_Verbose) {print "UI 0x6A IMBE Voice part 9 + low speed data 1.\n";}
-					$Quant{$Index}{LSD0} = ord(substr($Message, 4, 1));
-					$Quant{$Index}{LSD1} = ord(substr($Message, 5, 1));
-					$Quant{$Index}{Speech} = ord(substr($Message, 6, 11));
-					$Quant{$Index}{Raw0x6A} = $Message;
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
+					$Quant{$Index}{'LSD0'} = ord(substr($Message, 4, 1));
+					$Quant{$Index}{'LSD1'} = ord(substr($Message, 5, 1));
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 6, 11));
+					$Quant{$Index}{'Raw0x6A'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x6B { # dBm, RSSI, BER.
@@ -983,13 +983,13 @@ sub HDLC_Rx{
 					}
 					switch (ord(substr($Message, 6, 1))) {
 						case 0x0B { # DVoice
-							$Quant{$Index}{IsDigitalVoice} = 1;
-							$Quant{$Index}{IsPage} = 0;
+							$Quant{$Index}{'IsDigitalVoice'} = 1;
+							$Quant{$Index}{'IsPage'} = 0;
 							if ($HDLC_Verbose) {print ", Digital Voice";}
 						}
 						case 0x0F { # Page
-							$Quant{$Index}{IsDigitalVoice} = 0;
-							$Quant{$Index}{IsPage} = 1;
+							$Quant{$Index}{'IsDigitalVoice'} = 0;
+							$Quant{$Index}{'IsPage'} = 1;
 							if ($HDLC_Verbose) {print ", Page";}
 						}
 					}
@@ -1002,86 +1002,86 @@ sub HDLC_Rx{
 							if ($HDLC_Verbose) {print ", SiteID: Quantar";}
 						}
 					}
-					$Quant{$Index}{RSSI} = ord(substr($Message, 8, 1));
+					$Quant{$Index}{'RSSI'} = ord(substr($Message, 8, 1));
 					if (ord(substr($Message, 9, 1))) {
-						$Quant{$Index}{RSSI_Is_Valid} = 1;
+						$Quant{$Index}{'RSSI_Is_Valid'} = 1;
 						if ($HDLC_Verbose) {
-							print ", RSSI = " . $Quant{$Index}{RSSI};
-							print ", Inverted signal = " . $Quant{$Index}{InvertedSignal};
+							print ", RSSI = " . $Quant{$Index}{'RSSI'};
+							print ", Inverted signal = " . $Quant{$Index}{'InvertedSignal'};
 						}
 					} else {
-						$Quant{$Index}{RSSI_Is_Valid} = 0;
+						$Quant{$Index}{'RSSI_Is_Valid'} = 0;
 					}
 					if ($HDLC_Verbose) {print "\n";}
-					$Quant{$Index}{InvertedSignal} = ord(substr($Message, 10, 1));
-					$Quant{$Index}{CandidateAdjustedMM} = ord(substr($Message, 11, 1));
-					$Quant{$Index}{Speech} = ord(substr($Message, 12, 11));
-					$Quant{$Index}{Raw0x6B} = $Message;
-					$Quant{$Index}{SourceDev} = ord(substr($Message, 23, 1));
-					$Quant{$Index}{SuperFrame} = $Message;
+					$Quant{$Index}{'InvertedSignal'} = ord(substr($Message, 10, 1));
+					$Quant{$Index}{'CandidateAdjustedMM'} = ord(substr($Message, 11, 1));
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 12, 11));
+					$Quant{$Index}{'Raw0x6B'} = $Message;
+					$Quant{$Index}{'SourceDev'} = ord(substr($Message, 23, 1));
+					$Quant{$Index}{'SuperFrame'} = $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x6C {
 					if ($HDLC_Verbose) {print "UI 0x6C IMBE Voice part 11.\n";}
-					$Quant{$Index}{Speech} = ord(substr($Message, 3, 11));
-					$Quant{$Index}{Raw0x6C} = $Message;
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 3, 11));
+					$Quant{$Index}{'Raw0x6C'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x6D {
 					if ($HDLC_Verbose) {print "UI 0x6D IMBE Voice part 12 + encryption sync.\n";}
-					$Quant{$Index}{EncryptionI} = ord(substr($Message, 3, 4));
-					$Quant{$Index}{Speech} = ord(substr($Message, 7, 11));
-					$Quant{$Index}{Raw0x6D} = $Message;
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
+					$Quant{$Index}{'EncryptionI'} = ord(substr($Message, 3, 4));
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 7, 11));
+					$Quant{$Index}{'Raw0x6D'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x6E {
 					if ($HDLC_Verbose) {print "UI 0x6E IMBE Voice part 13 + encryption sync.\n";}
-					$Quant{$Index}{EncryptionII } = ord(substr($Message, 3,4));
-					$Quant{$Index}{Speech} = ord(substr($Message, 7, 11));
-					$Quant{$Index}{Raw0x6E} = $Message;
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
+					$Quant{$Index}{'EncryptionII'} = ord(substr($Message, 3,4));
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 7, 11));
+					$Quant{$Index}{'Raw0x6E'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x6F {
 					if ($HDLC_Verbose) {print "UI 0x6F IMBE Voice part 14 + encryption sync.\n";}
-					$Quant{$Index}{EncryptionIII} = ord(substr($Message, 3,4));
-					$Quant{$Index}{Speech} = ord(substr($Message, 7, 11));
-					$Quant{$Index}{Raw0x6F} = $Message;
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
+					$Quant{$Index}{'EncryptionIII'} = ord(substr($Message, 3,4));
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 7, 11));
+					$Quant{$Index}{'Raw0x6F'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x70 { # Algorithm.
 					if ($HDLC_Verbose) {print "UI 0x70 IMBE Voice part 15 + encryption sync.\n";}
-					$Quant{$Index}{Algorythm} = ord(substr($Message, 3,1));
-					$Quant{$Index}{KeyID} = ord(substr($Message, 4,2));
-					$Quant{$Index}{Speech} = ord(substr($Message, 7, 11));
-					$Quant{$Index}{Raw0x70} = $Message;
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
+					$Quant{$Index}{'Algorythm'} = ord(substr($Message, 3,1));
+					$Quant{$Index}{'KeyID'} = ord(substr($Message, 4,2));
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 7, 11));
+					$Quant{$Index}{'Raw0x70'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x71 {
 					if ($HDLC_Verbose) {print "UI 0x71 IMBE Voice part 16 + encryption sync.\n";}
-					$Quant{$Index}{Speech} = ord(substr($Message, 7, 11));
-					$Quant{$Index}{Raw0x71} = $Message;
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 7, 11));
+					$Quant{$Index}{'Raw0x71'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x72 {
 					if ($HDLC_Verbose) {print "UI 0x72 IMBE Voice part 17 + encryption sync.\n";}
-					$Quant{$Index}{Speech} = ord(substr($Message, 7, 11));
-					$Quant{$Index}{Raw0x72} = $Message;
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 7, 11));
+					$Quant{$Index}{'Raw0x72'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x73 { # Low speed data Byte 2.
 					if ($HDLC_Verbose) {print "UI 0x73 IMBE Voice part 18 + low speed data 2.\n";}
-					$Quant{$Index}{LSD2} = ord(substr($Message, 4, 1));
-					$Quant{$Index}{LSD3} = ord(substr($Message, 5, 1));
-					$Quant{$Index}{Speech} = ord(substr($Message, 6, 11));
-					$Quant{$Index}{Raw0x73} = $Message;
-					$Quant{$Index}{SuperFrame} = $Quant{$Index}{SuperFrame} . $Message;
+					$Quant{$Index}{'LSD2'} = ord(substr($Message, 4, 1));
+					$Quant{$Index}{'LSD3'} = ord(substr($Message, 5, 1));
+					$Quant{$Index}{'Speech'} = ord(substr($Message, 6, 11));
+					$Quant{$Index}{'Raw0x73'} = $Message;
+					$Quant{$Index}{'SuperFrame'} = $Quant{$Index}{'SuperFrame'} . $Message;
 					Tx_to_Network($Message);
 				}
 				case 0x80 {
@@ -1166,7 +1166,8 @@ sub HDLC_Tx{
 	my $CRC;
 	my $MSB;
 	my $LSB;
-	if ($Mode == 0) { #Serial mode.
+	# Serial mode = 0;
+	if ($Mode == 0) {
 		if ($HDLC_Verbose) {print "HDLC_Tx.\n";}
 		if ($HDLC_Verbose > 1) {Bytes_2_HexString($Data);}
 		$CRC = CRC_CCITT_Gen($Data);
@@ -1182,7 +1183,8 @@ sub HDLC_Tx{
 		nanosleep($SerialWait * 1000000000);
 		if ($HDLC_Verbose) {print "Serial nanosleep = $SerialWait\n";}
 	}
-	if ($Mode == 1) { # STUN mode.
+	# STUN mode = 1;
+	if ($Mode == 1) {
 		STUN_Tx($Data);
 	}
 	if ($HDLC_Verbose) {print "HDLC_Tx Done.\n";}
@@ -1251,16 +1253,14 @@ sub CRC_CCITT_Gen{
 sub STUN_Tx{
 	my ($Buffer) = @_;
 	my $STUN_Header = chr(0x08) . chr(0x31) . chr(0x00) . chr(0x00) . chr(0x00) .
-		chr(2 + length($Buffer)) . chr($STUN_ID); # STUN Header.
+		chr(length($Buffer)) . chr($STUN_ID); # STUN Header.
 	my $Data = $STUN_Header . $Buffer;
 	if ($STUN_Connected) {
-		#if ($STUN_Verbose) {
-			#print "\nSTUN_Tx to " . $STUN_ClientIP . "\n";
-		#}
-#		$STUN_DataIndex++;
-#		@STUN_Data[$STUN_DataIndex] = $Data;
-
-#		$STUN_Sel->can_write(0.0001);
+		if ($STUN_Verbose) {
+			print "\nSTUN_Tx to " . $STUN_ClientIP . "\n";
+		}
+		#$STUN_Sel->can_write(0.0001);
+		if ($HDLC_Verbose >= 0) {Bytes_2_HexString($Data);}
 		$STUN_ClientSocket->send($Data);
 		print "  STUN_Tx Success!!!\n";
 	}
@@ -1278,13 +1278,13 @@ sub WritePoll{
 	for (my $x = length($Data); $x < 11; $x++) {
 		$Data = $Data . $Filler;
 	}
-	$TG{$TalkGroup}{Sock}->send($Data);
+	$TG{$TalkGroup}{'Sock'}->send($Data);
 	if ($MMDVM_Verbose) {
-		print "WritePoll IP " . $TG{$TalkGroup}{MMDVM_TalkGroup} .
-			$TG{$TalkGroup}{MMDVM_URL} .
-			" Port " . $TG{$TalkGroup}{MMDVM_Port} . "\n";
+		print "WritePoll IP " . $TG{$TalkGroup}{'MMDVM_TalkGroup'} .
+			$TG{$TalkGroup}{'MMDVM_URL'} .
+			" Port " . $TG{$TalkGroup}{'MMDVM_Port'} . "\n";
 	}
-		$TG{$TalkGroup}{MMDVM_Connected} = 1;
+		$TG{$TalkGroup}{'MMDVM_Connected'} = 1;
 }
 
 sub WriteUnlink{
@@ -1294,14 +1294,14 @@ sub WriteUnlink{
 	for (my $x = length($Data); $x < 11; $x++) {
 		$Data = $Data . $Filler;
 	}
-	$TG{$TalkGroup}{Sock}->send($Data);
+	$TG{$TalkGroup}{'Sock'}->send($Data);
 	if ($MMDVM_Verbose) {
 		print "WriteUnlink TG " . $TalkGroup .
-			" IP " . $TG{$TalkGroup}{MMDVM_URL} .
-			" Port " . $TG{$TalkGroup}{MMDVM_Port} . "\n";
+			" IP " . $TG{$TalkGroup}{'MMDVM_URL'} .
+			" Port " . $TG{$TalkGroup}{'MMDVM_Port'} . "\n";
 	}
-	$TG{$TalkGroup}{MMDVM_Connected} = 0;
-	$TG{$TalkGroup}{Sock}->close();
+	$TG{$TalkGroup}{'MMDVM_Connected'} = 0;
+	$TG{$TalkGroup}{'Sock'}->close();
 }
 
 sub MMDVM_Rx{ # Only HDLC UI Frame. Start on Quantar v.24 Byte 3.
@@ -1325,8 +1325,8 @@ sub MMDVM_Rx{ # Only HDLC UI Frame. Start on Quantar v.24 Byte 3.
 		}	
 		case 0xF1 { # Ref. Disconnect Ack.
 			if ($MMDVM_Verbose) {print "  Ref. Disconnect Ack Rx, TG $TalkGroup.\n";}
-			$TG{$TalkGroup}{MMDVM_Connected} = 0;
-			$TG{$TalkGroup}{Sock}->close();
+			$TG{$TalkGroup}{'MMDVM_Connected'} = 0;
+			$TG{$TalkGroup}{'Sock'}->close();
 			#$MMDVM_Listen_Enable = 0;
 		}
 		case 0xF2 { # Start of Tx.
@@ -1339,7 +1339,7 @@ sub MMDVM_Rx{ # Only HDLC UI Frame. Start on Quantar v.24 Byte 3.
 
 sub MMDVM_Tx{
 	my ($TalkGroup, $Buffer) = @_;
-	$TG{$TalkGroup}{Sock}->send($Buffer);
+	$TG{$TalkGroup}{'Sock'}->send($Buffer);
 }
 
 ##################################################################
@@ -1349,10 +1349,10 @@ sub P25NX_Disconnect{
 	my ($TalkGroup) = @_;
 	if ($TalkGroup > 10099 and $TalkGroup < 10600){
 		my $MulticastAddress = makeMulticastAddress($TalkGroup);
-		$TG{$TalkGroup}{Sock}->mcast_drop($MulticastAddress);
+		$TG{$TalkGroup}{'Sock'}->mcast_drop($MulticastAddress);
 	}
-	$TG{$TalkGroup}{P25NX_Connected} = 0;
-	$TG{$TalkGroup}{Sock}->close();
+	$TG{$TalkGroup}{'P25NX_Connected'} = 0;
+	$TG{$TalkGroup}{'Sock'}->close();
 	print "P25NX TG " . $TalkGroup . " disconnected.\n";
 }
 
@@ -1430,8 +1430,8 @@ sub StrToHex{
 
 sub P25Link_Disconnect {
 	my ($TalkGroup) = @_;
-	$TG{$TalkGroup}{P25Link_Connected} = 0;
-	$TG{$TalkGroup}{Sock}->close();
+	$TG{$TalkGroup}{'P25Link_Connected'} = 0;
+	$TG{$TalkGroup}{'Sock'}->close();
 }
 
 
@@ -1550,7 +1550,7 @@ sub P25NX_to_HDLC{ # P25NX packet contains Cisco STUN and Quantar packet.
 ##################################################################
 sub AddLinkTG{
 	my ($TalkGroup) = @_;	
-	if ($TG{$TalkGroup}{Linked} == 1 ) {
+	if ($TG{$TalkGroup}{'Linked'} == 1 ) {
 		return;
 	}
 	print "AddLinkTG " . $TalkGroup . "\n";
@@ -1562,9 +1562,9 @@ sub AddLinkTG{
 		or ($TalkGroup >= 10600 and $TalkGroup < 65535)) { # MMDVM.
 
 		# Connect to TG.
-		if ($Verbose) {print "  MMDVM Connecting to TG " . $TG{$TalkGroup}{MMDVM_TalkGroup} .
-			" IP " . $TG{$TalkGroup}{MMDVM_URL} .
-			" on Port " . $TG{$TalkGroup}{MMDVM_Port} . "\n";
+		if ($Verbose) {print "  MMDVM Connecting to TG " . $TG{$TalkGroup}{'MMDVM_TalkGroup'} .
+			" IP " . $TG{$TalkGroup}{'MMDVM_URL'} .
+			" on Port " . $TG{$TalkGroup}{'MMDVM_Port'} . "\n";
 		}
 		$TG{$TalkGroup}{Sock} = IO::Socket::INET->new(
 			LocalPort => $MMDVM_LocalPort,
@@ -1572,15 +1572,15 @@ sub AddLinkTG{
 			Blocking => 0,
 			Broadcast => 0,
 			ReuseAddr => 1,
-			PeerHost => $TG{$TalkGroup}{MMDVM_URL},
-			PeerPort => $TG{$TalkGroup}{MMDVM_Port}
+			PeerHost => $TG{$TalkGroup}{'MMDVM_URL'},
+			PeerPort => $TG{$TalkGroup}{'MMDVM_Port'}
 		) or die "Can not Bind MMDVM : $@\n";
-		$TG{$TalkGroup}{Sel} = IO::Select->new($TG{$TalkGroup}{Sock});
+		$TG{$TalkGroup}{'Sel'} = IO::Select->new($TG{$TalkGroup}{'Sock'});
 print "gagaga " . $TalkGroup ."\n";
-		WritePoll($TG{$TalkGroup}{MMDVM_TalkGroup});
+		WritePoll($TG{$TalkGroup}{'MMDVM_TalkGroup'});
 
-		WritePoll($TG{$TalkGroup}{MMDVM_TalkGroup});
-		WritePoll($TG{$TalkGroup}{MMDVM_TalkGroup});
+		WritePoll($TG{$TalkGroup}{'MMDVM_TalkGroup'});
+		WritePoll($TG{$TalkGroup}{'MMDVM_TalkGroup'});
 	}
 	if ($P25NX_Enabled and $TalkGroup >= 10100 and $TalkGroup < 10600) { # case P25NX.
 		my $MulticastAddress = makeMulticastAddress($TalkGroup);
@@ -1597,24 +1597,24 @@ print "gagaga " . $TalkGroup ."\n";
 			PeerPort => $P25NX_Port
 			)
 			or die "Can not create Multicast : $@\n";
-		$TG{$TalkGroup}{Sel} = IO::Select->new($TG{$TalkGroup}{Sock});
-		$TG{$TalkGroup}{Sock}->mcast_add($MulticastAddress);
-		$TG{$TalkGroup}{Sock}->mcast_ttl(10);
-		$TG{$TalkGroup}{Sock}->mcast_loopback(0);
-		$TG{$TalkGroup}{P25NX_Connected} = 1;
+		$TG{$TalkGroup}{'Sel'} = IO::Select->new($TG{$TalkGroup}{'Sock'});
+		$TG{$TalkGroup}{'Sock'}->mcast_add($MulticastAddress);
+		$TG{$TalkGroup}{'Sock'}->mcast_ttl(10);
+		$TG{$TalkGroup}{'Sock'}->mcast_loopback(0);
+		$TG{$TalkGroup}{'P25NX_Connected'} = 1;
 	}
 
 	if ($P25Link_Enabled and $TalkGroup >= 10100 and $TalkGroup < 10600) { # case P25Link.
 
-		$TG{$TalkGroup}{P25Link_Connected} = 1;
+		$TG{$TalkGroup}{'P25Link_Connected'} = 1;
 	}
 	
 	# Finalize link.
-	$TG{$TalkGroup}{Linked} = 1;
+	$TG{$TalkGroup}{'Linked'} = 1;
 	$LinkedTalkGroup = $TalkGroup;
 	Start_TG_Mute();
-	if ($TG{$TalkGroup}{Scan} == 0) {
-		$TG{$TalkGroup}{Timer} = time();
+	if ($TG{$TalkGroup}{'Scan'} == 0) {
+		$TG{$TalkGroup}{'Timer'} = time();
 	}
 	if ($UseVoicePrompts) {
 		$VA_Message = $TalkGroup; # Linked TalkGroup.
@@ -1627,24 +1627,24 @@ print "gagaga " . $TalkGroup ."\n";
 ##################################################################
 sub RemoveLinkTG {
 	my ($TalkGroup) = @_;
-	if ($TG{$TalkGroup}{Linked} == 0 ) {
+	if ($TG{$TalkGroup}{'Linked'} == 0 ) {
 		return;
 	}
 	print "RemoveLinkTG " . $TalkGroup . "\n";
 
 	# Disconnect from current network.
-	if ($TG{$TalkGroup}{MMDVM_Connected}) {
+	if ($TG{$TalkGroup}{'MMDVM_Connected'}) {
 		WriteUnlink($TalkGroup);
 		WriteUnlink($TalkGroup);
 		WriteUnlink($TalkGroup);
 	}
-	if ($TG{$TalkGroup}{P25NX_Connected}) {
+	if ($TG{$TalkGroup}{'P25NX_Connected'}) {
 		P25NX_Disconnect($TalkGroup);
 	}
-	if ($TG{$TalkGroup}{P25Link_Connected}) {
+	if ($TG{$TalkGroup}{'P25Link_Connected'}) {
 		P25Link_Disconnect($TalkGroup);
 	}
-	$TG{$TalkGroup}{Linked} = 0;
+	$TG{$TalkGroup}{'Linked'} = 0;
 	#if ($UseVoicePrompts) {
 	#	$VA_Message = $TalkGroup; # Linked TalkGroup.
 	#	$Pending_VA = 1;
@@ -1829,15 +1829,15 @@ sub MainLoop{
 			#print $hour . ":" . $min . ":" . $sec . " Sending WritePoll beacon.\n";
 			#warn "MMDVM_Poll Timed out @{[int time - $^T]}\n";
 			foreach my $key (keys %TG) {
-				if ($TG{$key}{MMDVM_Connected}) {
-					WritePoll($TG{$key}{MMDVM_TalkGroup});
+				if ($TG{$key}{'MMDVM_Connected'}) {
+					WritePoll($TG{$key}{'MMDVM_TalkGroup'});
 				}
 			}
 			$MMDVM_Poll_NextTimer = $MMDVM_Poll_Timer_Interval + time();
 		}
 		# MMDVM Receiver.
 		foreach my $key (keys %TG) {
-			if ($TG{$key}{MMDVM_Connected}) {
+			if ($TG{$key}{'MMDVM_Connected'}) {
 				for my $MMDVM_fh ($TG{$key}{Sel}->can_read(0.0001)) {
 					$MMDVM_RemoteHost = $MMDVM_fh->recv(my $Buffer, $MaxLen);
 					$MMDVM_RemoteHost = $MMDVM_fh->peerhost;
@@ -1853,23 +1853,23 @@ sub MainLoop{
 		}
 		# P25NX Receiver
 		foreach my $key (keys %TG) {
-			if ($TG{$key}{P25NX_Connected}) {
+			if ($TG{$key}{'P25NX_Connected'}) {
 				my $TalkGroup;
 				my $OutBuffer;
 				for my $P25NX_fh ($TG{$key}{Sel}->can_read(0.0001)) {
 					my $P25NX_RemoteHost = $P25NX_fh->recv(my $Buffer, $MaxLen);
 					$P25NX_RemoteHost = $P25NX_fh->peerhost;
 					#if ($Verbose) {print "P25NX_LocalHost = " . $PNX_LocalHost . "\n";}
-					my $MulticastAddress = makeMulticastAddress($TG{$key}{P25NX_TalkGroup});
+					my $MulticastAddress = makeMulticastAddress($TG{$key}{'P25NX_TalkGroup'});
 					if (($P25NX_RemoteHost cmp $MulticastAddress) != 0) {
 						if ($Verbose) {print $hour . ":" . $min . ":" . $sec .
 							" " . $P25NX_RemoteHost .
 							" P25NX Data len(" . length($Buffer) . ")\n";
 						}
-						if (!$PriorityTGActive and ($TG{$key}{Scan} > $Scan)) {
+						if (!$PriorityTGActive and ($TG{$key}{'Scan'} > $Scan)) {
 							$TalkGroup = $key;
 							$OutBuffer = $Buffer;
-							$Scan = $TG{$key}{Scan};
+							$Scan = $TG{$key}{'Scan'};
 						}
 						if ($key == $LinkedTalkGroup) {
 							$TalkGroup = $key;
@@ -1886,7 +1886,7 @@ sub MainLoop{
 		}
 		# P25Link Receiver
 		foreach my $key (keys %TG) {
-			if ($TG{$key}{P25Link_Connected}) {
+			if ($TG{$key}{'P25Link_Connected'}) {
 				
 			}
 		}
@@ -1899,13 +1899,13 @@ sub MainLoop{
 
 
 		# End of Tx timmer (1 sec).
-		if ($Quant{0}{LocalRx} and ($Quant{0}{LocalRx_Time} + 1000 >= $TickCount)) {
-			$Quant{0}{LocalRx} = 0;
+		if ($Quant{0}{'LocalRx'} and ($Quant{0}{'LocalRx_Time'} + 1000 >= $TickCount)) {
+			$Quant{0}{'LocalRx'} = 0;
 		}
 
 
 		# Voice Announce.
-		if ($HDLC_Handshake and ($Quant{0}{LocalRx} == 0) and $Pending_VA) {
+		if ($HDLC_Handshake and ($Quant{0}{'LocalRx'} == 0) and $Pending_VA) {
 			SaySomething($VA_Message);
 			$Pending_VA = 0;
 		}
