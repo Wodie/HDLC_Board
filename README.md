@@ -15,7 +15,7 @@ Buffer from Async to Sync is limited to 120/112 bytes, but need testing.
 
 To use the p25nx_v2.x.x program copy p25nx_v2.x.x.pl, congfig.ini, , hosts.txt, and Speech.ini to a folder.
 
-Update the config.ini file with your callsign and IP address, etc. Mode = 0 means Serial, Mode = 1 means Cisco STUN (work in progress, not working).
+Update the config.ini file with your callsign and IP address, etc. Mode = 0 means Serial, Mode = 1 means Cisco STUN.
 
 Modify the hosts.txt file with the Talk Groups you want lo add to the Scan list by setting the last field to a highest take precedence >= 1, 0 = No Scan.
 
