@@ -425,7 +425,7 @@ print "  Server waiting for client connection on port " . $STUN_Port . ".\n";
 # Set timeouts -- may not really be needed
 IO::Socket::Timeout->enable_timeouts_on($STUN_ServerSocket);
 $STUN_ServerSocket->read_timeout(0.0001);
-$STUN_ServerSocket->write_timeout(0.5);
+$STUN_ServerSocket->write_timeout(0.0001);
 my $STUN_DataIndex = 0;
 my @STUN_Data = [];
 
@@ -1801,7 +1801,7 @@ sub MainLoop{
 
 		# Cisco STUN TCP Receiver.
 		if (($Mode == 1) and ($STUN_Connected == 1)) {
-			for $STUN_fh ($STUN_Sel->can_read(0.1)) {
+			for $STUN_fh ($STUN_Sel->can_read(0.0001)) {
 				my $RemoteHost = $STUN_fh->recv(my $Buffer, $MaxLen);
 				if ($RemoteHost) {
 					print "RemoteHost = " . $RemoteHost . "\n";
@@ -1812,7 +1812,7 @@ sub MainLoop{
 					if ($STUN_Verbose) {
 						print $hour . ":" . $min . ":" . $sec .
 						" " . $RemoteHost . 
-						" Cisco Buffer len(" . length($Buffer) . ")\n";
+						" STUN Rx Buffer len(" . length($Buffer) . ")\n";
 					}
 					HDLC_Rx(substr($Buffer, 7, length($Buffer)), 0);
 				}
