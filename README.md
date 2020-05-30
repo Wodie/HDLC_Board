@@ -13,31 +13,19 @@ Buffer from Async to Sync is limited to 120/112 bytes, but need testing.
 
 # P25NX_v2 Software
 
-To use the p25nx_v2.x.x program copy p25nx_v2.x.x.pl, congfig.ini, , hosts.txt, and Speech.ini to a folder.
+To use the p25nx_v2.x.x program copy files to your Raspberry path /opt/p25nx2.
+
+TO run the configuration menu:
+
+cd /opt/p25nx2
+sudo chmod 755 p25nx2-menu
+sudo ./p25nx2-menu
+
+there you can make the initial setup, download libraries to get it working, etc.
 
 Update the config.ini file with your callsign and IP address, etc. Mode = 0 means Serial, Mode = 1 means Cisco STUN.
 
 Modify the hosts.txt file with the Talk Groups you want lo add to the Scan list by setting the last field to a highest take precedence >= 1, 0 = No Scan.
-
-Install the required Perl libraries using the follownig commands:
-
-sudo cpan
-
-install Switch
-
-install IO::Socket
-
-install IO::Socket::Multicast
-
-install Config::IniFiles
-
-install Digest::CRC
-
-install Device::SerialPort
-
-install Term::ReadKey
-
-exit
 
 # Running software
 
@@ -50,7 +38,7 @@ sudo chmod +x p25nx_v2.x.x.pl
 
 sudo cpan -i PAR::Packer
 
-pp -o p25nx.exe p25nx_v2.x.x.pl
+pp -o p25nx2.exe p25nx_v2.x.x.pl
 
 
 This software and hardware is licenced under the GPL v3. If you are using it, please let me know, I will be glad to know it.
