@@ -1,10 +1,6 @@
-# HDLC_Board
+# HDLC_Board - HDLC v.24 Sync to/from Async Hardware.
 
-Importatnt: this is a work in progress project, so features might not work on every update.
-
-# HDLC v.24 Sync to/from Async Hardware.
-
-This is the sourcecode for the Microchip PICs 15F887 or 16F884 for the v.24 board created by Juan Carlos Perez KM4NNO / XE1F.
+This is the sourcecode for the Microchip PICs 15F887 or 16F884 for the v.24 board created by Juan Carlos Perez De Castro KM4NNO / XE1F.
 This board converts Sync to Async HDLC and Async to Sync HDLC.
 Quantar/DIU3000 needs to be the master clock (set them to internal clock).
 
