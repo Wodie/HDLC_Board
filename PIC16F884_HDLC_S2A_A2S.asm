@@ -4,7 +4,7 @@
 ;	Date:			Nov 30, 2019.										*
 ;	File Version:	4.6.1												*
 ;																		*
-;	Author:		Juan Carlos Pérez De Castro								*
+;	Author:		Juan Carlos Perez								*
 ;	Project advisor:	Bryan Fiels W9CR								*
 ;																		*
 ;	This software is licenced under the GPL v3 license.					*
